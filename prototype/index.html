@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>t.immo — Käufer-Assistent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50:'#f0f9f4', 100:'#d1f0df', 200:'#a7e1c1', 500:'#34c17b', 600:'#22a366', 700:'#1a7d4e' },
+                        surface: { 50:'#fafafa', 100:'#f4f4f5', 200:'#e4e4e7', 300:'#d4d4d8' },
+                        legal: { 50:'#eef2ff', 100:'#e0e7ff', 600:'#4f46e5', 700:'#4338ca' }
+                    },
+                    fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        .view { display: none; }
+        .view.active { display: block; }
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        .card-hover { transition: all 0.15s ease; }
+        .card-hover:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .modal-overlay { background: rgba(0,0,0,0.3); backdrop-filter: blur(4px); }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .accordion-content.open { max-height: 800px; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #22a366; box-shadow: 0 0 0 3px rgba(34,163,102,0.1); }
+        .nav-tab { position: relative; padding: 0 4px; }
+        .nav-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: #22a366; border-radius: 1px; }
+    </style>
+</head>
+<body class="bg-surface-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- ========== TOP NAV ========== -->
+    <header class="bg-white border-b border-surface-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+            <!-- Logo -->
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
+                    <i class="fa-solid fa-key text-white text-sm"></i>
+                </div>
+                <span class="text-lg font-bold text-slate-900 tracking-tight">t.immo</span>
+            </div>
+
+            <!-- Main Nav Tabs -->
+            <nav class="flex items-center gap-1 h-14">
+                <button onclick="navigateTo('objects')" id="tab-objects" class="nav-tab active h-full flex items-center gap-1.5 px-4 text-sm font-medium text-slate-900 hover:text-brand-700 transition">
+                    <i class="fa-solid fa-building text-xs text-slate-400"></i> Objekte
+                </button>
+                <button onclick="navigateTo('transactions')" id="tab-transactions" class="nav-tab h-full flex items-center gap-1.5 px-4 text-sm font-medium text-slate-500 hover:text-brand-700 transition">
+                    <i class="fa-solid fa-list-check text-xs text-slate-400"></i> Transaktionen
+                    <span id="tx-badge" class="hidden px-1.5 py-0.5 text-[10px] font-bold bg-brand-600 text-white rounded-full leading-none">1</span>
+                </button>
+            </nav>
+
+            <!-- User -->
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-bold">M</div>
+                <span class="text-sm text-slate-600 hidden sm:inline">Max</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-6 py-8 flex-1">
+
+        <!-- ============================================================ -->
+        <!-- VIEW: OBJECT LIST                                            -->
+        <!-- ============================================================ -->
+        <div id="view-objects" class="view active fade-in">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Meine Objekte</h1>
+                    <p class="text-sm text-slate-500 mt-0.5">4 Objekte · 1 in Transaktion</p>
+                </div>
+                <button onclick="showModal('import-modal')" class="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition shadow-sm">
+                    <i class="fa-solid fa-plus text-xs"></i> Objekt hinzufügen
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="flex items-center gap-2 mb-5 text-sm flex-wrap">
+                <button class="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-medium">Alle</button>
+                <button class="px-3 py-1.5 rounded-lg text-slate-500 hover:bg-surface-100">🔍 Interessiert</button>
+                <button class="px-3 py-1.5 rounded-lg text-slate-500 hover:bg-surface-100">✅ Besichtigt</button>
+                <button class="px-3 py-1.5 rounded-lg text-slate-500 hover:bg-surface-100">💬 Verhandlung</button>
+                <button class="px-3 py-1.5 rounded-lg text-slate-500 hover:bg-surface-100">📝 Kaufvertrag</button>
+            </div>
+
+            <!-- Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                <!-- Card 1: Kaufvertrag / In Transaktion -->
+                <div class="bg-white rounded-xl border border-surface-200 card-hover cursor-pointer overflow-hidden" onclick="navigateTo('object-detail-tx')">
+                    <div class="h-36 bg-gradient-to-br from-emerald-50 to-slate-100 relative flex items-center justify-center">
+                        <i class="fa-solid fa-building text-4xl text-slate-300"></i>
+                        <div class="absolute top-3 left-3">
+                            <span class="px-2 py-1 rounded-md text-xs font-semibold bg-brand-100 text-brand-700">📝 Kaufvertrag</span>
+                        </div>
+                        <div class="absolute top-3 right-3">
+                            <span class="px-2 py-1 rounded-md text-xs font-medium bg-white/80 text-slate-600">ETW</span>
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-semibold text-slate-900 text-sm">3-Zi Altbau Schwabing</h3>
+                        <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                            <i class="fa-solid fa-location-dot text-[10px]"></i>
+                            Leopoldstr. 42, 80802 München
+                        </p>
+                        <div class="flex items-baseline gap-1 mt-3">
+                            <span class="text-lg font-bold text-slate-900">485.000</span>
+                            <span class="text-sm text-slate-500">€</span>
+                        </div>
+                        <div class="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                            <span><i class="fa-solid fa-ruler-combined mr-1"></i>78 m²</span>
+                            <span><i class="fa-solid fa-door-open mr-1"></i>3 Zi</span>
+                            <span><i class="fa-solid fa-calendar mr-1"></i>Bj. 1965</span>
+                        </div>
+                        <!-- Transaction Progress Bar -->
+                        <div class="mt-3 pt-3 border-t border-surface-100">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span class="text-[11px] font-semibold text-brand-700 flex items-center gap-1">
+                                    <i class="fa-solid fa-list-check text-[10px]"></i> Transaktion: Phase 4/5
+                                </span>
+                                <span class="text-[11px] text-slate-400">60%</span>
+                            </div>
+                            <div class="w-full bg-surface-100 h-1.5 rounded-full overflow-hidden">
+                                <div class="bg-brand-500 h-1.5 rounded-full" style="width: 60%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Verhandlung -->
+                <div class="bg-white rounded-xl border border-surface-200 card-hover cursor-pointer overflow-hidden" onclick="navigateTo('object-detail')">
+                    <div class="h-36 bg-gradient-to-br from-amber-50 to-slate-100 relative flex items-center justify-center">
+                        <i class="fa-solid fa-house text-4xl text-slate-300"></i>
+                        <div class="absolute top-3 left-3">
+                            <span class="px-2 py-1 rounded-md text-xs font-semibold bg-amber-100 text-amber-800">💬 Verhandlung</span>
+                        </div>
+                        <div class="absolute top-3 right-3">
+                            <span class="px-2 py-1 rounded-md text-xs font-medium bg-white/80 text-slate-600">DHH</span>
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-semibold text-slate-900 text-sm">Doppelhaushälfte Pasing</h3>
+                        <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                            <i class="fa-solid fa-location-dot text-[10px]"></i>
+                            Am Knie 8, 81243 München
+                        </p>
+                        <div class="flex items-baseline gap-1 mt-3">
+                            <span class="text-lg font-bold text-slate-900">720.000</span>
+                            <span class="text-sm text-slate-500">€</span>
+                        </div>
+                        <div class="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                            <span><i class="fa-solid fa-ruler-combined mr-1"></i>112 m²</span>
+                            <span><i class="fa-solid fa-door-open mr-1"></i>5 Zi</span>
+                            <span><i class="fa-solid fa-calendar mr-1"></i>Bj. 2001</span>
+                        </div>
+                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-surface-100">
+                            <span class="text-[11px] text-slate-400">Hinzugefügt 12.10.2026</span>
+                            <span class="text-[11px] text-slate-400"><i class="fa-solid fa-paperclip mr-0.5"></i>Exposé</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Interessiert -->
+                <div class="bg-white rounded-xl border border-surface-200 card-hover cursor-pointer overflow-hidden">
+                    <div class="h-36 bg-gradient-to-br from-blue-50 to-slate-100 relative flex items-center justify-center">
+                        <i class="fa-solid fa-building text-4xl text-slate-300"></i>
+                        <div class="absolute top-3 left-3">
+                            <span class="px-2 py-1 rounded-md text-xs font-semibold bg-blue-100 text-blue-800">🔍 Interessiert</span>
+                        </div>
+                        <div class="absolute top-3 right-3">
+                            <span class="px-2 py-1 rounded-md text-xs font-medium bg-white/80 text-slate-600">ETW</span>
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-semibold text-slate-900 text-sm">2-Zi Neubau Sendling</h3>
+                        <p class="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                            <i class="fa-solid fa-location-dot text-[10px]"></i>
+                            Plinganserstr. 15, 81369 München
+                        </p>
+                        <div class="flex items-baseline gap-1 mt-3">
+                            <span class="text-lg font-bold text-slate-900">355.000</span>
+                            <span class="text-sm text-slate-500">€</span>
+                        </div>
+                        <div class="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                            <span><i class="fa-solid fa-ruler-combined mr-1"></i>55 m²</span>
+                            <span><i class="fa-solid fa-door-open mr-1"></i>2 Zi</span>
+                            <span><i class="fa-solid fa-calendar mr-1"></i>Bj. 2024</span>
+                        </div>
+                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-surface-100">
+                            <span class="text-[11px] text-slate-400">Hinzugefügt 20.10.2026</span>
+                            <span class="text-[11px] text-slate-400"><i class="fa-solid fa-link mr-0.5"></i>ImmoScout24</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ghost add card -->
+                <div class="border-2 border-dashed border-surface-200 rounded-xl flex flex-col items-center justify-center py-12 cursor-pointer hover:border-brand-400 hover:bg-brand-50/30 transition group" onclick="showModal('import-modal')">
+                    <div class="w-10 h-10 rounded-full bg-surface-100 group-hover:bg-brand-100 flex items-center justify-center mb-3 transition">
+                        <i class="fa-solid fa-plus text-slate-400 group-hover:text-brand-600 transition"></i>
+                    </div>
+                    <span class="text-sm font-medium text-slate-400 group-hover:text-brand-700 transition">Objekt hinzufügen</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- VIEW: OBJECT DETAIL (standard - no transaction)              -->
+        <!-- ============================================================ -->
+        <div id="view-object-detail" class="view fade-in">
+            <button onclick="navigateTo('objects')" class="text-sm text-slate-500 hover:text-slate-900 mb-4 flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Zurück zu Objekte
+            </button>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 space-y-5">
+                    <!-- Header -->
+                    <div class="bg-white rounded-xl border border-surface-200 p-6">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="px-2 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-800">💬 Verhandlung</span>
+                                    <span class="px-2 py-0.5 rounded text-xs font-medium bg-surface-100 text-slate-600">DHH</span>
+                                </div>
+                                <h1 class="text-xl font-bold text-slate-900 mt-2">Doppelhaushälfte Pasing</h1>
+                                <p class="text-sm text-slate-500 flex items-center gap-1 mt-1">
+                                    <i class="fa-solid fa-location-dot text-xs"></i> Am Knie 8, 81243 München
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-2xl font-bold text-slate-900">720.000 €</div>
+                                <div class="text-xs text-slate-400 mt-0.5">6.429 €/m²</div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-4 gap-4 mt-6 pt-5 border-t border-surface-100">
+                            <div><div class="text-xs text-slate-400 mb-0.5">Wohnfläche</div><div class="text-sm font-semibold">112 m²</div></div>
+                            <div><div class="text-xs text-slate-400 mb-0.5">Zimmer</div><div class="text-sm font-semibold">5</div></div>
+                            <div><div class="text-xs text-slate-400 mb-0.5">Baujahr</div><div class="text-sm font-semibold">2001</div></div>
+                            <div><div class="text-xs text-slate-400 mb-0.5">Grundstück</div><div class="text-sm font-semibold">310 m²</div></div>
+                        </div>
+                    </div>
+                    <!-- Details -->
+                    <div class="bg-white rounded-xl border border-surface-200">
+                        <button onclick="toggleAccordion('det2')" class="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-surface-50 transition">
+                            <span class="text-sm font-semibold text-slate-900"><i class="fa-solid fa-house-chimney mr-2 text-slate-400"></i>Objektdetails</span>
+                            <i id="icon-det2" class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform"></i>
+                        </button>
+                        <div id="accordion-det2" class="accordion-content open">
+                            <div class="px-6 pb-5 grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                                <div class="flex justify-between"><span class="text-slate-500">Zustand</span><span class="font-medium">Gepflegt</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Heizung</span><span class="font-medium">Gas-Brennwert</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Garage</span><span class="font-medium">Doppelgarage</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Garten</span><span class="font-medium">Ja, Südwest</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Keller</span><span class="font-medium">Ja, voll unterkellert</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Energieeffizienz</span><span class="font-medium">C — 98 kWh/m²a</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Sidebar -->
+                <div class="space-y-5">
+                    <div class="bg-white rounded-xl border border-surface-200 p-5">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Aktionen</h3>
+                        <div class="space-y-2">
+                            <button class="w-full text-left text-sm px-3 py-2.5 rounded-lg hover:bg-surface-50 flex items-center gap-2.5 text-slate-700"><i class="fa-solid fa-pen-to-square text-slate-400 w-4"></i> Bearbeiten</button>
+                            <button onclick="showModal('activate-tx-modal')" class="w-full text-left text-sm px-3 py-2.5 rounded-lg hover:bg-brand-50 flex items-center gap-2.5 text-brand-700 font-medium">
+                                <i class="fa-solid fa-rocket text-brand-500 w-4"></i> Kaufvertrag einleiten
+                            </button>
+                            <button class="w-full text-left text-sm px-3 py-2.5 rounded-lg hover:bg-surface-50 flex items-center gap-2.5 text-slate-700"><i class="fa-solid fa-file-pdf text-slate-400 w-4"></i> Exposé ansehen</button>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl border border-surface-200 p-5">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Ansprechpartner</h3>
+                        <div class="flex items-center gap-3 px-3 py-2">
+                            <div class="w-9 h-9 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">TM</div>
+                            <div>
+                                <div class="text-sm font-medium text-slate-900">Thomas Müller</div>
+                                <div class="text-xs text-slate-400">Makler · RE/MAX München</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl border border-surface-200 p-5">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Notizen</h3>
+                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-slate-700 leading-relaxed">
+                            Gute Lage, ruhige Straße. Dach wurde 2018 neu gemacht. Preis evtl. verhandelbar laut Makler. Nochmal wegen Grundsteuer-Reform nachfragen.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- VIEW: OBJECT DETAIL WITH TRANSACTION (Copilot activated)     -->
+        <!-- ============================================================ -->
+        <div id="view-object-detail-tx" class="view fade-in">
+            <button onclick="navigateTo('objects')" class="text-sm text-slate-500 hover:text-slate-900 mb-4 flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Zurück zu Objekte
+            </button>
+
+            <!-- Property Context Ribbon -->
+            <div class="bg-slate-900 text-white rounded-xl p-5 mb-6 shadow-lg">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded text-xs font-semibold bg-brand-500 text-white">In Abwicklung</span>
+                            <span class="px-2 py-0.5 rounded text-xs font-medium bg-slate-700 text-slate-300">ETW</span>
+                        </div>
+                        <h1 class="text-lg font-bold mt-1.5">3-Zi Altbau Schwabing</h1>
+                        <p class="text-xs text-slate-400 mt-0.5">
+                            Leopoldstr. 42, 80802 München · Kaufpreis: <span class="text-white font-semibold">485.000 €</span> · Notartermin: <span class="text-slate-200">12.11.2026</span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-6">
+                        <div>
+                            <div class="text-xs text-slate-400">Fortschritt</div>
+                            <div class="text-brand-400 font-bold text-lg" id="txProgressPct">60%</div>
+                        </div>
+                        <div class="w-28 bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                            <div id="txProgressBar" class="bg-brand-400 h-2.5 rounded-full transition-all duration-500" style="width: 60%"></div>
+                        </div>
+                        <button onclick="navigateTo('object-detail')" class="text-xs text-slate-400 hover:text-white transition flex items-center gap-1">
+                            <i class="fa-solid fa-building text-[10px]"></i> Objektdetails
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Two-Column: Copilot + Sidebar -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Main: Transaction Copilot -->
+                <section class="lg:col-span-8 space-y-5">
+                    <!-- Stage Tracker -->
+                    <div class="bg-white p-4 rounded-xl border border-surface-200 shadow-sm overflow-x-auto">
+                        <div class="flex items-center justify-between min-w-[580px] text-xs font-medium" id="stageTracker">
+                            <!-- Rendered by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Active Stage Detail -->
+                    <div class="bg-white rounded-xl border border-surface-200 shadow-sm p-6">
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center pb-4 border-b border-surface-100 gap-2">
+                            <div>
+                                <span id="txStageBadge" class="px-2 py-0.5 rounded text-xs font-semibold bg-brand-100 text-brand-700 uppercase">Phase 4</span>
+                                <h2 id="txStageTitle" class="text-xl font-bold text-slate-900 mt-1"></h2>
+                            </div>
+                            <div id="txStageMeta" class="text-right text-xs text-slate-500"></div>
+                        </div>
+                        <p id="txStageDesc" class="py-4 text-sm text-slate-600 leading-relaxed"></p>
+
+                        <!-- Tasks -->
+                        <div class="space-y-3">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Meilensteine & Voraussetzungen</h3>
+                            <div id="txTaskList" class="space-y-2"></div>
+                        </div>
+
+                        <!-- Action Bar -->
+                        <div id="txActionBar" class="mt-6 pt-4 border-t border-surface-100 flex flex-wrap items-center justify-between gap-3"></div>
+                    </div>
+
+                    <!-- Document Vault -->
+                    <div class="bg-white rounded-xl border border-surface-200 shadow-sm p-6">
+                        <div class="flex items-center justify-between pb-4 border-b border-surface-100">
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900">Transaktions-Dokumentenraum</h2>
+                                <p class="text-xs text-slate-500">Verschlüsselte Ablage nach DSGVO-Standards</p>
+                            </div>
+                            <button onclick="showModal('upload-modal')" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition shadow-sm">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Hochladen
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto mt-4">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-surface-200">
+                                        <th class="py-2.5">Dokument</th>
+                                        <th class="py-2.5">Kategorie</th>
+                                        <th class="py-2.5">Status</th>
+                                        <th class="py-2.5 text-right">Aktion</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="txDocTable" class="text-xs divide-y divide-surface-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Sidebar -->
+                <aside class="lg:col-span-4 space-y-5">
+                    <!-- Legal Watch -->
+                    <div class="bg-gradient-to-br from-legal-50 to-surface-50 border border-legal-100 rounded-xl p-5 shadow-sm">
+                        <div class="flex items-center gap-2 text-legal-700 font-bold text-sm">
+                            <i class="fa-solid fa-scale-balanced"></i>
+                            <span>Käuferschutz & Fristen</span>
+                        </div>
+                        <div class="mt-3 space-y-3">
+                            <div>
+                                <div class="flex justify-between items-center text-xs">
+                                    <span class="font-medium text-slate-700">14-Tage-Prüffrist (§ 17 BeurkG)</span>
+                                    <span class="text-emerald-700 font-bold bg-emerald-100 px-1.5 py-0.5 rounded text-[10px]">Erfüllt</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Entwurf lag 16 Tage vor Beurkundung vor.</p>
+                            </div>
+                            <div class="pt-3 border-t border-legal-100">
+                                <div class="flex justify-between items-center text-xs">
+                                    <span class="font-medium text-slate-700">Geldwäscheprüfung (§ 16a GwG)</span>
+                                    <span id="gwgBadge" class="text-amber-700 font-bold bg-amber-100 px-1.5 py-0.5 rounded text-[10px]">Beleg ausstehend</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Kaufpreiszahlung muss unbar nachgewiesen werden.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contacts -->
+                    <div class="bg-white rounded-xl border border-surface-200 shadow-sm p-5">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Transaktionspartner</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between text-xs">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold">MM</div>
+                                    <div><div class="font-semibold">Max Mustermann <span class="text-[10px] text-brand-600 bg-brand-50 px-1 py-0.5 rounded border border-brand-200">Sie</span></div><div class="text-[10px] text-slate-500">Käufer</div></div>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between text-xs">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">IM</div>
+                                    <div><div class="font-semibold">ImmoPartner GmbH</div><div class="text-[10px] text-slate-500">Makler</div></div>
+                                </div>
+                                <i class="fa-regular fa-envelope text-slate-400 hover:text-slate-600 cursor-pointer"></i>
+                            </div>
+                            <div class="flex items-center justify-between text-xs">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold">NS</div>
+                                    <div><div class="font-semibold">Dr. F. Schmidt</div><div class="text-[10px] text-slate-500">Notariat München I</div></div>
+                                </div>
+                                <i class="fa-regular fa-envelope text-slate-400 hover:text-slate-600 cursor-pointer"></i>
+                            </div>
+                            <div class="flex items-center justify-between text-xs">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold">SF</div>
+                                    <div><div class="font-semibold">Sparkasse München</div><div class="text-[10px] text-slate-500">Finanzierende Bank</div></div>
+                                </div>
+                                <i class="fa-regular fa-envelope text-slate-400 hover:text-slate-600 cursor-pointer"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Audit Trail -->
+                    <div class="bg-white rounded-xl border border-surface-200 shadow-sm p-5">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Protokoll</h3>
+                        <div id="txAuditLog" class="space-y-3 text-xs border-l-2 border-surface-100 pl-3 ml-1">
+                            <div>
+                                <div class="text-[10px] text-slate-400">Heute, 09:15</div>
+                                <div class="text-slate-700 font-medium"><span class="font-semibold text-purple-700">Notariat</span>: Auflassungsvormerkung bestätigt.</div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-slate-400">Gestern, 14:30</div>
+                                <div class="text-slate-700 font-medium"><span class="font-semibold text-amber-700">Bank</span>: Grundschuldbestellungsurkunde eingegangen.</div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] text-slate-400">12.11.2026</div>
+                                <div class="text-slate-700 font-medium"><span class="font-semibold text-slate-900">System</span>: Kaufvertrag beurkundet (URNR 1402/2026).</div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- VIEW: TRANSACTIONS LIST                                      -->
+        <!-- ============================================================ -->
+        <div id="view-transactions" class="view fade-in">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Transaktionen</h1>
+                    <p class="text-sm text-slate-500 mt-0.5">1 aktive Transaktion</p>
+                </div>
+            </div>
+
+            <!-- Active Transaction Card -->
+            <div class="bg-white rounded-xl border border-surface-200 shadow-sm overflow-hidden card-hover cursor-pointer" onclick="navigateTo('object-detail-tx')">
+                <div class="p-6">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-brand-100 to-emerald-50 flex items-center justify-center flex-shrink-0">
+                                <i class="fa-solid fa-building text-brand-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="px-2 py-0.5 rounded text-xs font-semibold bg-brand-100 text-brand-700">Phase 4 / 5</span>
+                                    <span class="text-xs text-slate-400">seit 18.10.2026</span>
+                                </div>
+                                <h2 class="text-lg font-bold text-slate-900">3-Zi Altbau Schwabing</h2>
+                                <p class="text-sm text-slate-500">Leopoldstr. 42, 80802 München · 485.000 €</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-bold text-brand-600">60%</div>
+                            <div class="w-24 bg-surface-100 h-2 rounded-full overflow-hidden mt-1">
+                                <div class="bg-brand-500 h-2 rounded-full" style="width: 60%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mini Stage Tracker -->
+                    <div class="flex items-center gap-1 mt-5 pt-4 border-t border-surface-100">
+                        <div class="flex items-center gap-1 text-xs">
+                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px]"><i class="fa-solid fa-check"></i></span>
+                            <span class="text-slate-500">Reservierung</span>
+                        </div>
+                        <div class="h-px flex-1 bg-emerald-300 mx-1"></div>
+                        <div class="flex items-center gap-1 text-xs">
+                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px]"><i class="fa-solid fa-check"></i></span>
+                            <span class="text-slate-500">Entwurf</span>
+                        </div>
+                        <div class="h-px flex-1 bg-emerald-300 mx-1"></div>
+                        <div class="flex items-center gap-1 text-xs">
+                            <span class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-[10px]"><i class="fa-solid fa-check"></i></span>
+                            <span class="text-slate-500">Notar</span>
+                        </div>
+                        <div class="h-px flex-1 bg-brand-400 mx-1"></div>
+                        <div class="flex items-center gap-1 text-xs">
+                            <span class="w-5 h-5 rounded-full bg-brand-600 text-white flex items-center justify-center text-[10px] font-bold ring-2 ring-brand-200">4</span>
+                            <span class="text-brand-700 font-semibold">Fälligkeit</span>
+                        </div>
+                        <div class="h-px flex-1 bg-surface-200 mx-1"></div>
+                        <div class="flex items-center gap-1 text-xs">
+                            <span class="w-5 h-5 rounded-full bg-surface-100 text-slate-400 flex items-center justify-center text-[10px] font-bold border border-surface-200">5</span>
+                            <span class="text-slate-400">Übergabe</span>
+                        </div>
+                    </div>
+
+                    <!-- Next Action -->
+                    <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2">
+                        <i class="fa-solid fa-bell text-amber-500"></i>
+                        <span class="text-xs text-amber-800 font-medium">Nächster Schritt: Warten auf Negativattest der Gemeinde, dann Fälligkeitsmitteilung durch Notar.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty Hint -->
+            <div class="mt-6 text-center text-sm text-slate-400 py-8">
+                <p>Neue Transaktionen werden automatisch erstellt, wenn Sie bei einem Objekt<br>den Status auf „Kaufvertrag" ändern.</p>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- VIEW: ADD PROPERTY FORM                                      -->
+        <!-- ============================================================ -->
+        <div id="view-form" class="view fade-in">
+            <button onclick="navigateTo('objects')" class="text-sm text-slate-500 hover:text-slate-900 mb-4 flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Abbrechen
+            </button>
+            <div class="max-w-2xl">
+                <h1 class="text-xl font-bold text-slate-900 mb-1">Neues Objekt anlegen</h1>
+                <p class="text-sm text-slate-500 mb-6">Grunddaten eingeben — Details können Sie jederzeit ergänzen.</p>
+                <div class="bg-white rounded-xl border border-surface-200 p-6 space-y-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="sm:col-span-2"><label class="block text-xs font-semibold text-slate-600 mb-1.5">Bezeichnung *</label><input type="text" placeholder='z.B. "3-Zi ETW Schwabing"' class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Objektart *</label><select class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm bg-white"><option value="">Bitte wählen</option><option>ETW</option><option>EFH</option><option>DHH</option><option>REH</option><option>RMH</option><option>MFH</option><option>Grundstück</option></select></div>
+                        <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Kaufpreis (€) *</label><input type="text" placeholder="485.000" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                        <div class="sm:col-span-2"><label class="block text-xs font-semibold text-slate-600 mb-1.5">Adresse *</label><input type="text" placeholder="Straße und Hausnummer" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">PLZ *</label><input type="text" placeholder="80802" maxlength="5" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Ort *</label><input type="text" placeholder="München" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Wohnfläche (m²) *</label><input type="text" placeholder="78" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Zimmer *</label><input type="text" placeholder="3" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                    </div>
+                    <button onclick="toggleAccordion('form-more')" class="text-sm text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1.5"><i id="icon-form-more" class="fa-solid fa-chevron-right text-xs transition-transform"></i> Mehr Details (optional)</button>
+                    <div id="accordion-form-more" class="accordion-content">
+                        <div class="grid grid-cols-2 gap-4 mt-2">
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Baujahr</label><input type="text" placeholder="1965" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Etage</label><input type="text" placeholder="2" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Hausgeld (€/Monat)</label><input type="text" placeholder="380" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Heizungsart</label><select class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm bg-white"><option value="">—</option><option>Gas</option><option>Öl</option><option>Fernwärme</option><option>Wärmepumpe</option></select></div>
+                        </div>
+                    </div>
+                    <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Notizen</label><textarea rows="3" placeholder="Ihre Eindrücke, Fragen, nächste Schritte..." class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm resize-none"></textarea></div>
+                    <div class="flex items-center justify-between pt-3 border-t border-surface-100">
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i>Wird automatisch gespeichert</span>
+                        <button onclick="navigateTo('objects')" class="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-sm">Objekt speichern</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ========== MODAL: IMPORT ========== -->
+    <div id="import-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 fade-in overflow-hidden">
+            <div class="px-6 pt-6 pb-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-bold text-slate-900">Objekt hinzufügen</h2>
+                    <button onclick="hideModal('import-modal')" class="w-8 h-8 rounded-lg hover:bg-surface-100 flex items-center justify-center text-slate-400 hover:text-slate-700 transition"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div class="px-6 pb-2 space-y-3">
+                <div id="opt-url" class="border-2 border-surface-200 rounded-xl p-4 cursor-pointer hover:border-brand-400 transition" onclick="selectImport('url')">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-link text-blue-600"></i></div>
+                        <div class="flex-1">
+                            <div class="text-sm font-semibold text-slate-900">Web-Link einfügen</div>
+                            <div class="text-xs text-slate-500 mt-0.5">ImmoScout24, Immowelt — automatisch extrahiert</div>
+                            <div id="url-input-area" class="mt-3 hidden">
+                                <div class="flex gap-2"><input type="text" placeholder="https://www.immobilienscout24.de/expose/..." class="flex-1 px-3 py-2.5 rounded-lg border border-surface-200 text-sm"><button onclick="simulateImport()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition flex-shrink-0"><i class="fa-solid fa-sparkles mr-1"></i>Import</button></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="opt-pdf" class="border-2 border-surface-200 rounded-xl p-4 cursor-pointer hover:border-brand-400 transition" onclick="selectImport('pdf')">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-file-pdf text-red-500"></i></div>
+                        <div class="flex-1">
+                            <div class="text-sm font-semibold text-slate-900">Exposé-PDF hochladen</div>
+                            <div class="text-xs text-slate-500 mt-0.5">PDF analysieren und Felder extrahieren</div>
+                            <div id="pdf-input-area" class="mt-3 hidden">
+                                <div class="border-2 border-dashed border-surface-200 rounded-lg p-5 text-center hover:border-brand-400 transition"><i class="fa-solid fa-cloud-arrow-up text-xl text-slate-300 mb-1.5"></i><div class="text-sm text-slate-500">PDF ablegen oder <span class="text-brand-600 font-medium">auswählen</span></div></div>
+                                <button onclick="simulateImport()" class="mt-3 w-full px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition"><i class="fa-solid fa-sparkles mr-1"></i>Analysieren</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-2 border-surface-200 rounded-xl p-4 cursor-pointer hover:border-brand-400 transition" onclick="hideModal('import-modal'); navigateTo('form');">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-surface-100 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-keyboard text-slate-500"></i></div>
+                        <div><div class="text-sm font-semibold text-slate-900">Manuell eingeben</div><div class="text-xs text-slate-500 mt-0.5">Daten selbst eintragen</div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 text-[11px] text-slate-400 text-center"><i class="fa-solid fa-lock text-[10px] mr-0.5"></i> Daten werden lokal gespeichert.</div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL: IMPORT PREVIEW ========== -->
+    <div id="preview-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 fade-in overflow-hidden">
+            <div id="preview-loading" class="p-8 text-center">
+                <div class="w-12 h-12 rounded-full bg-brand-50 flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-sparkles text-brand-600 text-xl animate-pulse"></i></div>
+                <h3 class="text-base font-bold text-slate-900">Daten werden extrahiert…</h3>
+                <div class="mt-4 flex items-center justify-center gap-4 text-xs text-slate-400">
+                    <span class="flex items-center gap-1"><i class="fa-solid fa-check text-emerald-400"></i> Preis</span>
+                    <span class="flex items-center gap-1"><i class="fa-solid fa-check text-emerald-400"></i> Adresse</span>
+                    <span class="flex items-center gap-1"><i class="fa-solid fa-spinner animate-spin text-brand-500"></i> Details…</span>
+                </div>
+            </div>
+            <div id="preview-result" class="hidden">
+                <div class="px-6 pt-6 pb-3 flex items-center justify-between">
+                    <h3 class="text-base font-bold text-slate-900">Import-Vorschau</h3>
+                    <span class="px-2 py-1 rounded-md text-[11px] font-semibold bg-emerald-100 text-emerald-700">8/10 Felder erkannt</span>
+                </div>
+                <div class="px-6 pb-4 space-y-1 max-h-72 overflow-y-auto" id="preview-fields"></div>
+                <div class="px-6 py-4 border-t border-surface-100 flex items-center justify-between bg-surface-50">
+                    <button onclick="hideModal('preview-modal')" class="text-sm text-slate-500 hover:text-slate-700">Abbrechen</button>
+                    <div class="flex gap-2">
+                        <button onclick="hideModal('preview-modal'); navigateTo('form');" class="px-4 py-2.5 text-sm font-medium text-slate-700 border border-surface-200 rounded-lg hover:bg-white transition">Bearbeiten</button>
+                        <button onclick="hideModal('preview-modal'); navigateTo('objects');" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition">Übernehmen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL: ACTIVATE TRANSACTION ========== -->
+    <div id="activate-tx-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 fade-in overflow-hidden">
+            <div class="p-6">
+                <div class="w-12 h-12 rounded-full bg-brand-50 flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-rocket text-brand-600 text-xl"></i></div>
+                <h3 class="text-lg font-bold text-slate-900 text-center">Kaufvertrag einleiten</h3>
+                <p class="text-sm text-slate-500 text-center mt-1">Der Transaction Copilot wird aktiviert und begleitet Sie durch den gesamten Kaufprozess.</p>
+                <div class="mt-5 space-y-3">
+                    <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Geplanter Notartermin (optional)</label><input type="date" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                    <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Notar/in (optional)</label><input type="text" placeholder="z.B. Dr. Schmidt, München" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-surface-100 flex justify-between bg-surface-50">
+                <button onclick="hideModal('activate-tx-modal')" class="text-sm text-slate-500">Später</button>
+                <button onclick="hideModal('activate-tx-modal'); navigateTo('object-detail-tx'); activateTxBadge();" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition shadow-sm flex items-center gap-1.5">
+                    Copilot starten <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL: UPLOAD DOC ========== -->
+    <div id="upload-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 fade-in overflow-hidden">
+            <div class="px-6 pt-6 pb-3 flex justify-between items-center border-b border-surface-100">
+                <h3 class="font-bold text-slate-900 text-sm">Dokument hochladen</h3>
+                <button onclick="hideModal('upload-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-3 text-xs">
+                <div><label class="block font-medium text-slate-700 mb-1">Dokumentenart</label><select class="w-full border border-surface-200 rounded-lg p-2.5 text-sm"><option>Einkommensnachweis (Bonität)</option><option>Objektunterlage</option><option>Notarielle Urkunde</option><option>Zahlungsnachweis (§ 16a GwG)</option></select></div>
+                <div class="border-2 border-dashed border-surface-200 rounded-lg p-6 text-center hover:bg-surface-50 cursor-pointer"><i class="fa-solid fa-file-arrow-up text-2xl text-slate-300 mb-2"></i><p class="text-sm text-slate-500">PDF hier ablegen</p></div>
+            </div>
+            <div class="px-6 py-4 border-t border-surface-100 flex justify-end gap-2">
+                <button onclick="hideModal('upload-modal')" class="px-3 py-2 border border-surface-200 rounded-lg text-sm text-slate-600 font-medium">Abbrechen</button>
+                <button onclick="hideModal('upload-modal')" class="px-3 py-2 bg-brand-600 text-white rounded-lg text-sm font-semibold hover:bg-brand-700">Hochladen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SCRIPTS ========== -->
+    <script>
+        // -------- Navigation --------
+        function navigateTo(name) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            const viewId = {
+                'objects': 'view-objects',
+                'object-detail': 'view-object-detail',
+                'object-detail-tx': 'view-object-detail-tx',
+                'transactions': 'view-transactions',
+                'form': 'view-form'
+            }[name];
+            const view = document.getElementById(viewId);
+            if (view) { view.classList.add('active'); view.classList.remove('fade-in'); void view.offsetWidth; view.classList.add('fade-in'); }
+
+            // Update nav tabs
+            document.querySelectorAll('.nav-tab').forEach(t => { t.classList.remove('active'); t.classList.remove('text-slate-900'); t.classList.add('text-slate-500'); });
+            if (name === 'transactions') {
+                document.getElementById('tab-transactions').classList.add('active');
+                document.getElementById('tab-transactions').classList.add('text-slate-900');
+            } else {
+                document.getElementById('tab-objects').classList.add('active');
+                document.getElementById('tab-objects').classList.add('text-slate-900');
+            }
+
+            if (name === 'object-detail-tx') renderCopilot();
+        }
+
+        function activateTxBadge() {
+            document.getElementById('tx-badge').classList.remove('hidden');
+        }
+        // Show badge on load since we have 1 active tx
+        document.addEventListener('DOMContentLoaded', () => { activateTxBadge(); renderCopilot(); });
+
+        // -------- Modals --------
+        function showModal(id) { const m = document.getElementById(id); m.classList.remove('hidden'); m.classList.add('flex'); }
+        function hideModal(id) {
+            const m = document.getElementById(id); m.classList.add('hidden'); m.classList.remove('flex');
+            document.querySelectorAll('#url-input-area, #pdf-input-area').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('#opt-url, #opt-pdf').forEach(el => el.classList.remove('border-brand-500', 'bg-brand-50/30'));
+            const pl = document.getElementById('preview-loading'); if (pl) pl.classList.remove('hidden');
+            const pr = document.getElementById('preview-result'); if (pr) pr.classList.add('hidden');
+        }
+        document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) hideModal(m.id); }));
+
+        function selectImport(type) {
+            document.querySelectorAll('#url-input-area, #pdf-input-area').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('#opt-url, #opt-pdf').forEach(el => el.classList.remove('border-brand-500', 'bg-brand-50/30'));
+            document.getElementById('opt-' + type).classList.add('border-brand-500', 'bg-brand-50/30');
+            document.getElementById(type + '-input-area').classList.remove('hidden');
+        }
+
+        function simulateImport() {
+            hideModal('import-modal');
+            showModal('preview-modal');
+            setTimeout(() => {
+                document.getElementById('preview-loading').classList.add('hidden');
+                document.getElementById('preview-result').classList.remove('hidden');
+                const fields = [
+                    ['Objektart', 'ETW', true], ['Kaufpreis', '485.000 €', true], ['Adresse', 'Leopoldstr. 42, 80802 München', true],
+                    ['Wohnfläche', '78 m²', true], ['Zimmer', '3', true], ['Baujahr', '1965', true],
+                    ['Hausgeld', '380 €/Monat', true], ['Energieeffizienz', 'D — 128 kWh/m²a', true],
+                    ['Heizung', null, false], ['Stellplatz', null, false]
+                ];
+                document.getElementById('preview-fields').innerHTML = fields.map(([label, value, ok]) => `
+                    <div class="flex items-center justify-between py-2 border-b border-surface-100">
+                        <span class="text-xs text-slate-500 w-32">${label}</span>
+                        <span class="text-sm font-medium ${ok ? 'text-slate-900' : 'text-amber-600'} flex items-center gap-1.5">
+                            <i class="fa-solid ${ok ? 'fa-circle-check text-emerald-400' : 'fa-circle-question text-amber-400'} text-xs"></i>
+                            ${ok ? value : 'nicht erkannt'}
+                        </span>
+                    </div>
+                `).join('');
+            }, 1800);
+        }
+
+        // -------- Accordion --------
+        function toggleAccordion(name) {
+            const c = document.getElementById('accordion-' + name);
+            const i = document.getElementById('icon-' + name);
+            c.classList.toggle('open');
+            if (i) i.style.transform = c.classList.contains('open') ? 'rotate(180deg)' : '';
+        }
+
+        // -------- Transaction Copilot Data --------
+        let txStage = 4;
+        const txStages = {
+            1: { title: 'Reservierung, Bonitätsprüfung & Unterlagenvorbereitung', badge: 'Phase 1', responsible: 'Makler & Käufer',
+                 desc: 'Vorbereitung der Finanzierung und Sicherung des Objekts. Der Makler stellt die vollständigen Objektunterlagen bereit.',
+                 tasks: [
+                    { id:'t1_1', title:'Reservierungsvereinbarung unterzeichnet', done:true, by:'Käufer & Makler' },
+                    { id:'t1_2', title:'Finanzierungsbestätigung der Bank liegt vor', done:true, by:'Bank' },
+                    { id:'t1_3', title:'Objektunterlagen eingesehen (Grundbuch, Flurkarte)', done:true, by:'Käufer' }
+                ]},
+            2: { title: 'Notarbeauftragung & 14-Tage-Prüffrist', badge: 'Phase 2', responsible: 'Notariat & Parteien',
+                 desc: 'Der Notar erstellt den Kaufvertragsentwurf. Es gilt die 14-tägige Bedenkzeit nach § 17 Abs. 2a BeurkG.',
+                 tasks: [
+                    { id:'t2_1', title:'Datenerfassungsbogen bestätigt', done:true, by:'Käufer' },
+                    { id:'t2_2', title:'Kaufvertragsentwurf zugestellt', done:true, by:'Notariat' },
+                    { id:'t2_3', title:'14-Tage-Prüffrist abgelaufen', done:true, by:'Käufer' },
+                    { id:'t2_4', title:'Grundschuldbestellungsformular eingereicht', done:true, by:'Bank & Käufer' }
+                ]},
+            3: { title: 'Notarielle Beurkundung', badge: 'Phase 3', responsible: 'Notar, Käufer & Verkäufer',
+                 desc: 'Persönlicher Notartermin zur Verlesung und Unterzeichnung des Kaufvertrags.',
+                 tasks: [
+                    { id:'t3_1', title:'Kaufvertrag unterzeichnet (URNR 1402/2026)', done:true, by:'Käufer & Verkäufer' },
+                    { id:'t3_2', title:'Grundschuld beurkundet', done:true, by:'Käufer' },
+                    { id:'t3_3', title:'Mitteilung an Finanzamt erfolgt', done:true, by:'Notariat' }
+                ]},
+            4: { title: 'Vorbereitung der Kaufpreisfälligkeit', badge: 'Phase 4 — Aktuell', responsible: 'Notariat Dr. Schmidt',
+                 desc: 'Der Notar sichert Ihre Rechte ab. Der Kaufpreis wird erst fällig, wenn die Vormerkung eingetragen ist und alle Genehmigungen vorliegen.',
+                 tasks: [
+                    { id:'t4_1', title:'Auflassungsvormerkung im Grundbuch eingetragen', done:true, by:'Grundbuchamt' },
+                    { id:'t4_2', title:'Löschungsbewilligung Altlasten liegt vor', done:true, by:'Notariat' },
+                    { id:'t4_3', title:'Negativattest Vorkaufsrecht der Gemeinde', done:false, by:'Gemeinde' },
+                    { id:'t4_4', title:'Zustimmung WEG-Verwalter (§ 12 WEG)', done:true, by:'Hausverwaltung' },
+                    { id:'t4_5', title:'Fälligkeitsmitteilung an Käufer & Bank', done:false, by:'Notariat' }
+                ]},
+            5: { title: 'Kaufpreiszahlung, Übergabe & Eigentumsumschreibung', badge: 'Phase 5', responsible: 'Käufer, Verkäufer & Notar',
+                 desc: 'Nach der Fälligkeitsmitteilung überweisen Sie den Kaufpreis. Dann erfolgen Übergabe und Grundbucheintragung.',
+                 tasks: [
+                    { id:'t5_1', title:'Kaufpreiszahlung geleistet & Beleg hochgeladen', done:false, by:'Käufer' },
+                    { id:'t5_2', title:'Schlüsselübergabe & Übergabeprotokoll', done:false, by:'Käufer & Verkäufer' },
+                    { id:'t5_3', title:'Unbedenklichkeitsbescheinigung Finanzamt', done:false, by:'Finanzamt' },
+                    { id:'t5_4', title:'Eigentumsumschreibung im Grundbuch', done:false, by:'Grundbuchamt' }
+                ]}
+        };
+
+        const txDocs = [
+            { name: 'Grundbuchauszug_Schwabing.pdf', cat: 'Objekt', status: 'Geprüft' },
+            { name: 'Teilungserklaerung_Aufteilungsplan.pdf', cat: 'Objekt', status: 'Geprüft' },
+            { name: 'Kaufvertragsentwurf_v3_Schmidt.pdf', cat: 'Notariat', status: 'Geprüft' },
+            { name: 'Vormerkung_Bestaetigung_AG_MUC.pdf', cat: 'Notariat', status: 'Geprüft' },
+            { name: 'Gehaltsnachweise_Mustermann.pdf', cat: 'Bonität', status: 'Vertraulich' }
+        ];
+
+        function renderCopilot() {
+            const stage = txStages[txStage];
+            // Stage badge & title
+            document.getElementById('txStageBadge').textContent = stage.badge;
+            document.getElementById('txStageTitle').textContent = stage.title;
+            document.getElementById('txStageMeta').innerHTML = `<span>Zuständig:</span><div class="font-semibold text-slate-800">${stage.responsible}</div>`;
+            document.getElementById('txStageDesc').textContent = stage.desc;
+
+            // Stage tracker
+            const tracker = document.getElementById('stageTracker');
+            tracker.innerHTML = '';
+            for (let i = 1; i <= 5; i++) {
+                const done = i < txStage;
+                const active = i === txStage;
+                const future = i > txStage;
+                const names = ['Reservierung','Entwurf & Frist','Notartermin','Fälligkeit','Übergabe'];
+                const labels = ['Abgeschlossen','Abgeschlossen','Beurkundet','Aktiv','Ausstehend'];
+                tracker.innerHTML += `
+                    <div class="flex flex-col items-center flex-1 cursor-pointer" onclick="setTxStage(${i})">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1
+                            ${done ? 'bg-emerald-100 text-emerald-600 border-2 border-emerald-500' : ''}
+                            ${active ? 'bg-brand-600 text-white ring-4 ring-brand-200' : ''}
+                            ${future ? 'bg-surface-100 text-slate-400 border border-surface-200' : ''}">
+                            ${done ? '<i class="fa-solid fa-check text-xs"></i>' : i}
+                        </div>
+                        <span class="${active ? 'text-brand-700 font-bold' : done ? 'text-slate-700 font-semibold' : 'text-slate-500'}">${i}. ${names[i-1]}</span>
+                        <span class="text-[10px] ${active ? 'text-brand-600 font-semibold' : 'text-slate-400'}">${i < txStage ? labels[i-1] : active ? 'Aktiv' : 'Ausstehend'}</span>
+                    </div>
+                    ${i < 5 ? `<div class="h-0.5 flex-1 mx-1 ${i < txStage ? 'bg-emerald-500' : i === txStage ? 'bg-brand-400' : 'bg-surface-200'}"></div>` : ''}
+                `;
+            }
+
+            // Tasks
+            const taskList = document.getElementById('txTaskList');
+            taskList.innerHTML = '';
+            stage.tasks.forEach(t => {
+                const isBuyer = t.by.toLowerCase().includes('käufer');
+                taskList.innerHTML += `
+                    <div class="flex items-center justify-between p-3 rounded-lg border ${t.done ? 'bg-emerald-50/60 border-emerald-200' : 'bg-surface-50 border-surface-200'} text-xs">
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" ${t.done ? 'checked' : ''} ${isBuyer ? '' : 'disabled'} onchange="toggleTxTask('${t.id}')"
+                                class="w-4 h-4 text-brand-600 rounded border-slate-300 ${isBuyer ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}">
+                            <span class="${t.done ? 'line-through text-slate-400' : 'text-slate-800 font-semibold'}">${t.title}</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            ${isBuyer ? '<span class="text-[9px] px-1.5 py-0.5 rounded font-semibold bg-brand-100 text-brand-700 uppercase">Ihre Aufgabe</span>' : ''}
+                            <span class="text-[10px] px-2 py-0.5 rounded font-mono ${t.done ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-100 text-slate-600'}">${t.by}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Action bar
+            const ab = document.getElementById('txActionBar');
+            if (txStage === 4) {
+                ab.innerHTML = `
+                    <div class="text-xs text-slate-600 flex items-center gap-2"><i class="fa-solid fa-shield-halved text-brand-600"></i><span>Sie zahlen erst nach offizieller Fälligkeitsmitteilung.</span></div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="showModal('upload-modal')" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5"><i class="fa-solid fa-upload"></i> Zahlungsbeleg (§ 16a GwG)</button>
+                        <button onclick="simulateFaelligkeit()" class="px-2.5 py-1.5 bg-surface-100 hover:bg-surface-200 text-slate-700 border border-surface-200 rounded-lg text-xs font-medium transition flex items-center gap-1"><i class="fa-solid fa-wand-magic-sparkles text-purple-600"></i> Demo: Fälligkeit</button>
+                    </div>
+                `;
+            } else if (txStage === 5) {
+                ab.innerHTML = `
+                    <div class="text-xs text-slate-600 flex items-center gap-2"><i class="fa-solid fa-money-bill-transfer text-emerald-600"></i><span>Fälligkeitsmitteilung liegt vor. Bitte Kaufpreis überweisen.</span></div>
+                    <button onclick="showModal('upload-modal')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5"><i class="fa-solid fa-upload"></i> Zahlungsnachweis hochladen</button>
+                `;
+            } else {
+                ab.innerHTML = `<div class="text-xs text-slate-600 flex items-center gap-2"><i class="fa-solid fa-circle-check text-emerald-600"></i><span>Diese Phase ist abgeschlossen.</span></div>`;
+            }
+
+            // Docs
+            const docTable = document.getElementById('txDocTable');
+            docTable.innerHTML = txDocs.map(d => `
+                <tr class="hover:bg-surface-50 transition">
+                    <td class="py-2.5 font-medium text-slate-800 flex items-center gap-2"><i class="fa-regular fa-file-pdf text-red-500 text-sm"></i><span class="truncate max-w-[220px]">${d.name}</span></td>
+                    <td class="py-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-100 text-slate-600">${d.cat}</span></td>
+                    <td class="py-2.5"><span class="text-emerald-600 font-semibold text-xs"><i class="fa-solid fa-check mr-1"></i>${d.status}</span></td>
+                    <td class="py-2.5 text-right"><button class="text-brand-600 hover:text-brand-800 font-semibold"><i class="fa-solid fa-download"></i></button></td>
+                </tr>
+            `).join('');
+        }
+
+        function setTxStage(n) { txStage = n; renderCopilot(); }
+
+        function toggleTxTask(id) {
+            const t = txStages[txStage].tasks.find(t => t.id === id);
+            if (t) { t.done = !t.done; renderCopilot(); }
+        }
+
+        function simulateFaelligkeit() {
+            txStages[4].tasks.find(t => t.id === 't4_3').done = true;
+            txStages[4].tasks.find(t => t.id === 't4_5').done = true;
+            document.getElementById('txProgressPct').textContent = '80%';
+            document.getElementById('txProgressBar').style.width = '80%';
+            txStage = 5;
+            renderCopilot();
+            // Log
+            const log = document.getElementById('txAuditLog');
+            const item = document.createElement('div');
+            item.innerHTML = `<div class="text-[10px] text-slate-400">Gerade eben</div><div class="text-slate-700 font-medium"><span class="font-semibold text-purple-700">Notariat</span>: Fälligkeitsmitteilung erteilt.</div>`;
+            log.prepend(item);
+        }
+    </script>
+</body>
+</html>
