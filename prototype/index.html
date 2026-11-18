@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>t.immo — Käufer-Assistent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 50:'#f0f9f4', 100:'#d1f0df', 200:'#a7e1c1', 500:'#34c17b', 600:'#22a366', 700:'#1a7d4e' },
+                        surface: { 50:'#fafafa', 100:'#f4f4f5', 200:'#e4e4e7', 300:'#d4d4d8' },
+                        legal: { 50:'#eef2ff', 100:'#e0e7ff', 600:'#4f46e5', 700:'#4338ca' }
+                    },
+                    fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', system-ui, sans-serif; }
+        .view { display: none; }
+        .view.active { display: block; }
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+        .card-hover { transition: all 0.15s ease; }
+        .card-hover:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .modal-overlay { background: rgba(0,0,0,0.35); backdrop-filter: blur(4px); }
+        .accordion-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+        .accordion-content.open { max-height: 1200px; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #22a366; box-shadow: 0 0 0 3px rgba(34,163,102,0.1); }
+        .nav-tab { position: relative; padding: 0 4px; }
+        .nav-tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 2px; background: #22a366; border-radius: 1px; }
+        .diff-row-alert { background-color: #fff1f2 !important; border-left: 4px solid #f43f5e !important; }
+    </style>
+</head>
+<body class="bg-surface-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- ========== TOP NAV ========== -->
+    <header class="bg-white border-b border-surface-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+            <!-- Logo -->
+            <div class="flex items-center gap-2.5 cursor-pointer" onclick="navigateTo('objects')">
+                <div class="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center">
+                    <i class="fa-solid fa-key text-white text-sm"></i>
+                </div>
+                <span class="text-lg font-bold text-slate-900 tracking-tight">t.immo</span>
+            </div>
+
+            <!-- Main Nav Tabs -->
+            <nav class="flex items-center gap-1 h-14">
+                <button onclick="navigateTo('objects')" id="tab-objects" class="nav-tab active h-full flex items-center gap-1.5 px-4 text-sm font-medium text-slate-900 hover:text-brand-700 transition">
+                    <i class="fa-solid fa-building text-xs text-slate-400"></i> Objekte
+                </button>
+                <button onclick="navigateTo('transactions')" id="tab-transactions" class="nav-tab h-full flex items-center gap-1.5 px-4 text-sm font-medium text-slate-500 hover:text-brand-700 transition">
+                    <i class="fa-solid fa-list-check text-xs text-slate-400"></i> Transaktionen
+                    <span id="tx-badge" class="hidden px-1.5 py-0.5 text-[10px] font-bold bg-brand-600 text-white rounded-full leading-none">1</span>
+                </button>
+            </nav>
+
+            <!-- User -->
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-bold">M</div>
+                <span class="text-sm text-slate-600 hidden sm:inline">Max</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-6 py-8 flex-1">
+
+        <!-- ============================================================ -->
+        <!-- VIEW: OBJECT LIST                                            -->
+        <!-- ============================================================ -->
+        <div id="view-objects" class="view active fade-in">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Meine Objekte</h1>
+                    <p class="text-sm text-slate-500 mt-0.5">3 erfasste Objekte · Schnelle Aktionen direkt auf jeder Karte verfügbar</p>
+                </div>
+                <button onclick="showModal('import-modal')" class="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition shadow-sm">
+                    <i class="fa-solid fa-plus text-xs"></i> Objekt hinzufügen
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="flex items-center gap-2 mb-5 text-sm flex-wrap">
+                <button class="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-medium">Alle</button>
+                <button class="px-3 py-1.5 rounded-lg text-slate-500 hover:bg-surface-100">🔍 Interessiert</button>
+                <button class="px-3 py-1.5 rounded-lg text-slate-500 hover:bg-surface-100">✅ Besichtigt</button>
+                <button class="px-3 py-1.5 rounded-lg text-slate-500 hover:bg-surface-100">💬 In Verhandlung</button>
+                <button class="px-3 py-1.5 rounded-lg text-slate-500 hover:bg-surface-100">📝 Kaufvertrag</button>
+            </div>
+
+            <!-- Property Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+                <!-- Card 1: 3-Zi Altbau Schwabing -->
+                <div class="bg-white rounded-xl border border-surface-200 card-hover overflow-hidden flex flex-col justify-between shadow-xs">
+                    <div>
+                        <!-- Header banner -->
+                        <div class="h-36 bg-gradient-to-br from-emerald-50 to-slate-100 relative flex items-center justify-center cursor-pointer" onclick="loadPropertyCostView('schwabing'); navigateTo('object-detail');">
+                            <i class="fa-solid fa-building text-4xl text-slate-300"></i>
+                            <div class="absolute top-3 left-3 flex gap-1.5">
+                                <span id="card-status-schwabing" class="px-2 py-0.5 rounded-md text-xs font-semibold bg-brand-100 text-brand-700">📝 Kaufvertrag</span>
+                                <span class="px-2 py-0.5 rounded-md text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200" title="Exposé-Kosten weichen ab!">
+                                    <i class="fa-solid fa-triangle-exclamation mr-1 text-[10px]"></i>Diff
+                                </span>
+                            </div>
+                            <div class="absolute top-3 right-3">
+                                <span class="px-2 py-0.5 rounded-md text-xs font-medium bg-white/80 text-slate-600">ETW</span>
+                            </div>
+                        </div>
+
+                        <!-- Card Body -->
+                        <div class="p-4 cursor-pointer" onclick="loadPropertyCostView('schwabing'); navigateTo('object-detail');">
+                            <h3 id="card-title-schwabing" class="font-semibold text-slate-900 text-sm">3-Zi Altbau Schwabing</h3>
+                            <p id="card-addr-schwabing" class="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                                <i class="fa-solid fa-location-dot text-[10px]"></i> Leopoldstr. 42, 80802 München
+                            </p>
+                            <div class="flex items-baseline gap-1 mt-3">
+                                <span id="card-price-schwabing" class="text-lg font-bold text-slate-900">485.000</span>
+                                <span class="text-sm text-slate-500">€</span>
+                            </div>
+                            <div class="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                                <span id="card-area-schwabing"><i class="fa-solid fa-ruler-combined mr-1"></i>78 m²</span>
+                                <span id="card-rooms-schwabing"><i class="fa-solid fa-door-open mr-1"></i>3 Zi</span>
+                                <span><i class="fa-solid fa-calendar mr-1"></i>Bj. 1965</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card Persistent Action Bar -->
+                    <div class="p-3 bg-surface-50 border-t border-surface-200/70 flex items-center justify-between text-xs">
+                        <button onclick="triggerEditObject('schwabing')" class="px-2 py-1.5 rounded-lg text-slate-700 hover:text-brand-700 hover:bg-white font-medium flex items-center gap-1.5 transition border border-transparent hover:border-surface-200 shadow-2xs" title="Objekt bearbeiten">
+                            <i class="fa-solid fa-pen-to-square text-slate-400"></i> Bearbeiten
+                        </button>
+                        <button onclick="triggerStatusChange('schwabing')" class="px-2 py-1.5 rounded-lg text-slate-700 hover:text-brand-700 hover:bg-white font-medium flex items-center gap-1.5 transition border border-transparent hover:border-surface-200 shadow-2xs" title="Status ändern">
+                            <i class="fa-solid fa-arrow-right-arrow-left text-brand-600"></i> Status
+                        </button>
+                        <button onclick="triggerViewExpose('schwabing')" class="px-2 py-1.5 rounded-lg text-slate-700 hover:text-brand-700 hover:bg-white font-medium flex items-center gap-1.5 transition border border-transparent hover:border-surface-200 shadow-2xs" title="Exposé ansehen">
+                            <i class="fa-solid fa-file-pdf text-red-500"></i> Exposé
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Card 2: Doppelhaushälfte Pasing -->
+                <div class="bg-white rounded-xl border border-surface-200 card-hover overflow-hidden flex flex-col justify-between shadow-xs">
+                    <div>
+                        <div class="h-36 bg-gradient-to-br from-amber-50 to-slate-100 relative flex items-center justify-center cursor-pointer" onclick="loadPropertyCostView('pasing'); navigateTo('object-detail');">
+                            <i class="fa-solid fa-house text-4xl text-slate-300"></i>
+                            <div class="absolute top-3 left-3">
+                                <span id="card-status-pasing" class="px-2 py-0.5 rounded-md text-xs font-semibold bg-amber-100 text-amber-800">💬 In Verhandlung</span>
+                            </div>
+                            <div class="absolute top-3 right-3">
+                                <span class="px-2 py-0.5 rounded-md text-xs font-medium bg-white/80 text-slate-600">DHH</span>
+                            </div>
+                        </div>
+
+                        <div class="p-4 cursor-pointer" onclick="loadPropertyCostView('pasing'); navigateTo('object-detail');">
+                            <h3 id="card-title-pasing" class="font-semibold text-slate-900 text-sm">Doppelhaushälfte Pasing</h3>
+                            <p id="card-addr-pasing" class="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                                <i class="fa-solid fa-location-dot text-[10px]"></i> Am Knie 8, 81243 München
+                            </p>
+                            <div class="flex items-baseline gap-1 mt-3">
+                                <span id="card-price-pasing" class="text-lg font-bold text-slate-900">720.000</span>
+                                <span class="text-sm text-slate-500">€</span>
+                            </div>
+                            <div class="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                                <span id="card-area-pasing"><i class="fa-solid fa-ruler-combined mr-1"></i>112 m²</span>
+                                <span id="card-rooms-pasing"><i class="fa-solid fa-door-open mr-1"></i>5 Zi</span>
+                                <span><i class="fa-solid fa-calendar mr-1"></i>Bj. 2001</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card Persistent Action Bar -->
+                    <div class="p-3 bg-surface-50 border-t border-surface-200/70 flex items-center justify-between text-xs">
+                        <button onclick="triggerEditObject('pasing')" class="px-2 py-1.5 rounded-lg text-slate-700 hover:text-brand-700 hover:bg-white font-medium flex items-center gap-1.5 transition border border-transparent hover:border-surface-200 shadow-2xs">
+                            <i class="fa-solid fa-pen-to-square text-slate-400"></i> Bearbeiten
+                        </button>
+                        <button onclick="triggerStatusChange('pasing')" class="px-2 py-1.5 rounded-lg text-slate-700 hover:text-brand-700 hover:bg-white font-medium flex items-center gap-1.5 transition border border-transparent hover:border-surface-200 shadow-2xs">
+                            <i class="fa-solid fa-arrow-right-arrow-left text-brand-600"></i> Status
+                        </button>
+                        <button onclick="triggerViewExpose('pasing')" class="px-2 py-1.5 rounded-lg text-slate-700 hover:text-brand-700 hover:bg-white font-medium flex items-center gap-1.5 transition border border-transparent hover:border-surface-200 shadow-2xs">
+                            <i class="fa-solid fa-file-pdf text-red-500"></i> Exposé
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Card 3: 2-Zi Neubau Sendling -->
+                <div class="bg-white rounded-xl border border-surface-200 card-hover overflow-hidden flex flex-col justify-between shadow-xs">
+                    <div>
+                        <div class="h-36 bg-gradient-to-br from-blue-50 to-slate-100 relative flex items-center justify-center cursor-pointer" onclick="loadPropertyCostView('sendling'); navigateTo('object-detail');">
+                            <i class="fa-solid fa-building text-4xl text-slate-300"></i>
+                            <div class="absolute top-3 left-3">
+                                <span id="card-status-sendling" class="px-2 py-0.5 rounded-md text-xs font-semibold bg-blue-100 text-blue-800">🔍 Interessiert</span>
+                            </div>
+                            <div class="absolute top-3 right-3">
+                                <span class="px-2 py-1 rounded-md text-xs font-medium bg-white/80 text-slate-600">ETW</span>
+                            </div>
+                        </div>
+
+                        <div class="p-4 cursor-pointer" onclick="loadPropertyCostView('sendling'); navigateTo('object-detail');">
+                            <h3 id="card-title-sendling" class="font-semibold text-slate-900 text-sm">2-Zi Neubau Sendling</h3>
+                            <p id="card-addr-sendling" class="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                                <i class="fa-solid fa-location-dot text-[10px]"></i> Plinganserstr. 15, 81369 München
+                            </p>
+                            <div class="flex items-baseline gap-1 mt-3">
+                                <span id="card-price-sendling" class="text-lg font-bold text-slate-900">355.000</span>
+                                <span class="text-sm text-slate-500">€</span>
+                            </div>
+                            <div class="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                                <span id="card-area-sendling"><i class="fa-solid fa-ruler-combined mr-1"></i>55 m²</span>
+                                <span id="card-rooms-sendling"><i class="fa-solid fa-door-open mr-1"></i>2 Zi</span>
+                                <span><i class="fa-solid fa-calendar mr-1"></i>Bj. 2024</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card Persistent Action Bar -->
+                    <div class="p-3 bg-surface-50 border-t border-surface-200/70 flex items-center justify-between text-xs">
+                        <button onclick="triggerEditObject('sendling')" class="px-2 py-1.5 rounded-lg text-slate-700 hover:text-brand-700 hover:bg-white font-medium flex items-center gap-1.5 transition border border-transparent hover:border-surface-200 shadow-2xs">
+                            <i class="fa-solid fa-pen-to-square text-slate-400"></i> Bearbeiten
+                        </button>
+                        <button onclick="triggerStatusChange('sendling')" class="px-2 py-1.5 rounded-lg text-slate-700 hover:text-brand-700 hover:bg-white font-medium flex items-center gap-1.5 transition border border-transparent hover:border-surface-200 shadow-2xs">
+                            <i class="fa-solid fa-arrow-right-arrow-left text-brand-600"></i> Status
+                        </button>
+                        <button onclick="triggerViewExpose('sendling')" class="px-2 py-1.5 rounded-lg text-slate-700 hover:text-brand-700 hover:bg-white font-medium flex items-center gap-1.5 transition border border-transparent hover:border-surface-200 shadow-2xs">
+                            <i class="fa-solid fa-file-pdf text-red-500"></i> Exposé
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ghost add card -->
+                <div class="border-2 border-dashed border-surface-200 rounded-xl flex flex-col items-center justify-center py-12 cursor-pointer hover:border-brand-400 hover:bg-brand-50/30 transition group" onclick="showModal('import-modal')">
+                    <div class="w-10 h-10 rounded-full bg-surface-100 group-hover:bg-brand-100 flex items-center justify-center mb-3 transition">
+                        <i class="fa-solid fa-plus text-slate-400 group-hover:text-brand-600 transition"></i>
+                    </div>
+                    <span class="text-sm font-medium text-slate-400 group-hover:text-brand-700 transition">Objekt hinzufügen</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- VIEW: OBJECT DETAIL (mit Kostenrechner & Exposé-Abgleich)     -->
+        <!-- ============================================================ -->
+        <div id="view-object-detail" class="view fade-in">
+            <!-- Top Action Bar -->
+            <div class="flex flex-wrap items-center justify-between mb-4 gap-2">
+                <button onclick="navigateTo('objects')" class="text-sm text-slate-500 hover:text-slate-900 flex items-center gap-1.5 transition">
+                    <i class="fa-solid fa-arrow-left text-xs"></i> Zurück zu Objekte
+                </button>
+                <!-- Property Selector -->
+                <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-surface-200 shadow-xs">
+                    <span class="text-xs text-slate-400 font-medium">Objekt:</span>
+                    <select id="propSelect" onchange="loadPropertyCostView(this.value)" class="text-xs font-semibold text-slate-800 bg-transparent border-none cursor-pointer focus:ring-0">
+                        <option value="schwabing">3-Zi Altbau Schwabing (ETW · 485.000 €)</option>
+                        <option value="pasing">Doppelhaushälfte Pasing (DHH · 720.000 €)</option>
+                        <option value="sendling">2-Zi Neubau Sendling (ETW · 355.000 €)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Main Layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left 8 cols: Main Content -->
+                <div class="lg:col-span-8 space-y-6">
+
+                    <!-- Header Card -->
+                    <div class="bg-white rounded-xl border border-surface-200 p-6 shadow-xs">
+                        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                            <div>
+                                <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                                    <span id="detailStatusBadge" class="px-2 py-0.5 rounded text-xs font-semibold bg-brand-100 text-brand-700">📝 Kaufvertrag</span>
+                                    <span id="detailTypeBadge" class="px-2 py-0.5 rounded text-xs font-medium bg-surface-100 text-slate-600">ETW</span>
+                                    <span id="detailDiscrepancyBadge" class="px-2 py-0.5 rounded text-xs font-bold bg-rose-100 text-rose-700 border border-rose-200 flex items-center gap-1">
+                                        <i class="fa-solid fa-triangle-exclamation text-[10px]"></i> 3 Abweichungen zum Exposé
+                                    </span>
+                                </div>
+                                <h1 id="detailTitle" class="text-xl font-bold text-slate-900">3-Zi Altbau Schwabing</h1>
+                                <p id="detailAddress" class="text-sm text-slate-500 flex items-center gap-1 mt-1">
+                                    <i class="fa-solid fa-location-dot text-xs"></i> Leopoldstr. 42, 80802 München
+                                </p>
+                            </div>
+                            
+                            <div class="sm:text-right">
+                                <div id="detailPriceDisplay" class="text-2xl font-bold text-slate-900">485.000 €</div>
+                                <div id="detailSqmPrice" class="text-xs text-slate-400 mt-0.5">6.218 €/m²</div>
+                            </div>
+                        </div>
+
+                        <!-- Top Persistent Actions Bar on Header -->
+                        <div class="mt-5 pt-4 border-t border-surface-100 flex flex-wrap items-center justify-between gap-3">
+                            <div class="flex items-center gap-2">
+                                <button onclick="triggerEditObject(currentActivePropId)" class="px-3 py-1.5 rounded-lg bg-surface-100 hover:bg-surface-200 text-slate-800 text-xs font-semibold flex items-center gap-1.5 transition">
+                                    <i class="fa-solid fa-pen-to-square text-slate-500"></i> Bearbeiten
+                                </button>
+                                <button onclick="triggerStatusChange(currentActivePropId)" class="px-3 py-1.5 rounded-lg bg-surface-100 hover:bg-surface-200 text-slate-800 text-xs font-semibold flex items-center gap-1.5 transition">
+                                    <i class="fa-solid fa-arrow-right-arrow-left text-brand-600"></i> Status ändern
+                                </button>
+                                <button onclick="triggerViewExpose(currentActivePropId)" class="px-3 py-1.5 rounded-lg bg-surface-100 hover:bg-surface-200 text-slate-800 text-xs font-semibold flex items-center gap-1.5 transition">
+                                    <i class="fa-solid fa-file-pdf text-red-500"></i> Exposé ansehen
+                                </button>
+                            </div>
+                            <div class="text-[11px] text-slate-400 flex items-center gap-1">
+                                <i class="fa-solid fa-lock text-[10px]"></i> Lokal gespeichert
+                            </div>
+                        </div>
+
+                        <!-- Key Facts Row -->
+                        <div class="grid grid-cols-4 gap-4 mt-5 pt-4 border-t border-surface-100 text-center sm:text-left">
+                            <div><div class="text-xs text-slate-400 mb-0.5">Wohnfläche</div><div id="detailArea" class="text-sm font-semibold text-slate-900">78 m²</div></div>
+                            <div><div class="text-xs text-slate-400 mb-0.5">Zimmer</div><div id="detailRooms" class="text-sm font-semibold text-slate-900">3</div></div>
+                            <div><div class="text-xs text-slate-400 mb-0.5">Baujahr</div><div id="detailYear" class="text-sm font-semibold text-slate-900">1965</div></div>
+                            <div><div class="text-xs text-slate-400 mb-0.5">Hausgeld</div><div id="detailHausgeldHead" class="text-sm font-semibold text-slate-900">380 €/Mtl.</div></div>
+                        </div>
+                    </div>
+
+                    <!-- ============================================================ -->
+                    <!-- 💰 KOSTENRECHNER & EXPOSÉ-SOLL/IST-VERGLEICH                 -->
+                    <!-- ============================================================ -->
+                    <div class="bg-white rounded-xl border border-surface-200 shadow-sm overflow-hidden" id="costCalculatorCard">
+                        <!-- Module Header -->
+                        <div class="p-6 border-b border-surface-100 bg-white">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-7 h-7 rounded-lg bg-brand-100 text-brand-700 flex items-center justify-center text-xs font-bold">
+                                            <i class="fa-solid fa-calculator"></i>
+                                        </div>
+                                        <h2 class="text-lg font-bold text-slate-900">Kostenrechner & Exposé-Vergleich</h2>
+                                    </div>
+                                    <p class="text-xs text-slate-500 mt-1">
+                                        Linke Spalte zeigt die <span class="font-semibold text-slate-700">Angaben laut Exposé</span>. Reale Mehrkosten sind <span class="text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">rot hervorgehoben</span>.
+                                    </p>
+                                </div>
+                                <!-- Filter toggle -->
+                                <div class="flex items-center gap-1.5 bg-surface-100 p-1 rounded-xl text-xs">
+                                    <button onclick="setCostFilter('all')" id="costFilterAll" class="px-2.5 py-1 rounded-lg font-semibold bg-white text-slate-900 shadow-xs">Alle Posten</button>
+                                    <button onclick="setCostFilter('diff')" id="costFilterDiff" class="px-2.5 py-1 rounded-lg text-slate-500 hover:text-rose-700 flex items-center gap-1">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Nur Abweichungen
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Alert Banner (dynamic) -->
+                            <div id="costAlertBanner" class="mt-4 p-3.5 bg-rose-50/90 border border-rose-200 rounded-xl flex items-start gap-3 text-xs text-rose-900">
+                                <div class="w-6 h-6 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center flex-shrink-0 mt-0.5 font-bold">
+                                    <i class="fa-solid fa-triangle-exclamation text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <span class="font-bold">Achtung: Kostenabweichungen zum Exposé festgestellt!</span>
+                                    <p class="text-rose-700 mt-0.5 leading-relaxed" id="costAlertText">
+                                        Im Makler-Exposé wurden Nebenkosten und Hausgeld niedriger dargestellt als die reale vertragliche Belastung.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Calculation Controls Bar -->
+                        <div class="px-6 py-4 bg-surface-50 border-b border-surface-200/70 text-xs">
+                            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                                <div>
+                                    <label class="block font-semibold text-slate-600 mb-1">Kaufpreis (€)</label>
+                                    <input type="number" id="calcPriceInput" step="1000" oninput="recalculateCosts()" class="w-full px-2.5 py-1.5 rounded-lg border border-surface-200 bg-white font-medium text-slate-900">
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-600 mb-1">Bundesland (Grunderwerbsteuer)</label>
+                                    <select id="calcStateInput" onchange="recalculateCosts()" class="w-full px-2.5 py-1.5 rounded-lg border border-surface-200 bg-white font-medium text-slate-900">
+                                        <option value="3.5" selected>Bayern (3,5%)</option>
+                                        <option value="5.0">Baden-Württemberg (5,0%)</option>
+                                        <option value="6.0">Berlin (6,0%)</option>
+                                        <option value="6.5">Brandenburg (6,5%)</option>
+                                        <option value="5.5">Hamburg (5,5%)</option>
+                                        <option value="6.0">Hessen (6,0%)</option>
+                                        <option value="6.5">Nordrhein-Westfalen (6,5%)</option>
+                                        <option value="5.0">Niedersachsen (5,0%)</option>
+                                        <option value="5.0">Rheinland-Pfalz (5,0%)</option>
+                                        <option value="6.5">Schleswig-Holstein (6,5%)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-600 mb-1">Maklerprovision (%)</label>
+                                    <select id="calcMaklerRateInput" onchange="recalculateCosts()" class="w-full px-2.5 py-1.5 rounded-lg border border-surface-200 bg-white font-medium text-slate-900">
+                                        <option value="0.0">0,0% (Provisionsfrei)</option>
+                                        <option value="3.57" selected>3,57% (Käuferanteil üblich)</option>
+                                        <option value="2.38">2,38% (Geteilt)</option>
+                                        <option value="7.14">7,14% (Alleiniger Käufer)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block font-semibold text-slate-600 mb-1">Eigenkapital (€)</label>
+                                    <input type="number" id="calcEquityInput" step="5000" value="100000" oninput="recalculateCosts()" class="w-full px-2.5 py-1.5 rounded-lg border border-surface-200 bg-white font-medium text-slate-900">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Comparison Table -->
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse" id="costComparisonTable">
+                                <thead>
+                                    <tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-surface-200 bg-white">
+                                        <th class="py-3 px-6">Kostenposition</th>
+                                        <th class="py-3 px-4 bg-slate-50/70 border-x border-surface-200/60 w-1/4">
+                                            <div class="flex items-center gap-1.5 text-slate-700">
+                                                <i class="fa-solid fa-file-invoice text-slate-400"></i>
+                                                <span>Laut Exposé (Links)</span>
+                                            </div>
+                                        </th>
+                                        <th class="py-3 px-4 w-1/4">
+                                            <div class="flex items-center gap-1.5 text-slate-700">
+                                                <i class="fa-solid fa-calculator text-brand-600"></i>
+                                                <span>Tatsächlich / Berechnet</span>
+                                            </div>
+                                        </th>
+                                        <th class="py-3 px-6 text-right">Differenz & Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="text-xs divide-y divide-surface-100" id="costTableBody"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Summary Totals Section -->
+                        <div class="p-6 bg-gradient-to-b from-surface-50 to-white border-t border-surface-200">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="bg-white p-4 rounded-xl border border-surface-200 shadow-2xs">
+                                    <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Reine Kaufnebenkosten</div>
+                                    <div class="text-xl font-bold text-slate-900 mt-1" id="totalNebenkostenDisplay">43.989 €</div>
+                                    <div class="text-xs text-slate-500 mt-0.5" id="totalNebenkostenPct">ca. 9,07 % vom Kaufpreis</div>
+                                </div>
+
+                                <div class="bg-white p-4 rounded-xl border-2 border-rose-200 shadow-2xs relative overflow-hidden bg-rose-50/30">
+                                    <div class="text-[11px] font-bold text-rose-700 uppercase tracking-wider flex items-center justify-between">
+                                        <span>Gesamtinvestition (IST)</span>
+                                        <span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 text-[10px]">Mehrkosten</span>
+                                    </div>
+                                    <div class="text-xl font-bold text-slate-900 mt-1" id="totalInvestmentDisplay">543.989 €</div>
+                                    <div class="text-xs font-semibold text-rose-600 mt-0.5 flex items-center gap-1" id="totalDiffToExpose">
+                                        <i class="fa-solid fa-arrow-trend-up"></i> +58.989 € über Exposé-Preis
+                                    </div>
+                                </div>
+
+                                <div class="bg-white p-4 rounded-xl border border-surface-200 shadow-2xs">
+                                    <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Monatliche Belastung (ca.)</div>
+                                    <div class="text-xl font-bold text-brand-700 mt-1" id="totalMonthlyRateDisplay">2.452 € / Mtl.</div>
+                                    <div class="text-xs text-slate-500 mt-0.5" id="monthlyBreakdownDisplay">
+                                        Bankrate: 2.072 € + Hausgeld: 380 €
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Objektdetails Accordion (Stammdaten) -->
+                    <div class="bg-white rounded-xl border border-surface-200 shadow-xs">
+                        <button onclick="toggleAccordion('det2')" class="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-surface-50 transition">
+                            <span class="text-sm font-semibold text-slate-900"><i class="fa-solid fa-house-chimney mr-2 text-slate-400"></i>Bau- & Ausstattungsdetails</span>
+                            <i id="icon-det2" class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform"></i>
+                        </button>
+                        <div id="accordion-det2" class="accordion-content">
+                            <div class="px-6 pb-5 grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                                <div class="flex justify-between"><span class="text-slate-500">Zustand</span><span id="detailCondition" class="font-medium text-slate-800">Gepflegt</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Heizung</span><span id="detailHeating" class="font-medium text-slate-800">Gas-Zentralheizung</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Stellplatz</span><span id="detailParking" class="font-medium text-slate-800">TG-Stellplatz</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Balkon / Garten</span><span id="detailOutdoor" class="font-medium text-slate-800">Balkon (Süd)</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Keller</span><span id="detailCellar" class="font-medium text-slate-800">Ja, Kellerabteil</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Energieeffizienz</span><span id="detailEnergy" class="font-medium text-slate-800">D — 128 kWh/m²a</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right 4 cols: Sticky Persistent Actions & Sidebar -->
+                <div class="lg:col-span-4 space-y-5">
+
+                    <!-- ========== PERMANENT ACTIONS PANEL (STICKY) ========== -->
+                    <div class="bg-white rounded-xl border border-surface-200 p-5 shadow-xs sticky top-20 z-10">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Aktionen</h3>
+                            <span class="text-[10px] text-brand-600 font-semibold bg-brand-50 px-1.5 py-0.5 rounded border border-brand-200">Stets verfügbar</span>
+                        </div>
+                        
+                        <div class="space-y-2">
+                            <!-- 1. Bearbeiten -->
+                            <button onclick="triggerEditObject(currentActivePropId)" class="w-full text-left text-sm px-3.5 py-2.5 rounded-lg bg-surface-50 hover:bg-surface-100 flex items-center justify-between text-slate-800 font-semibold transition border border-surface-200">
+                                <span class="flex items-center gap-2.5">
+                                    <i class="fa-solid fa-pen-to-square text-brand-600 w-4"></i> Bearbeiten
+                                </span>
+                                <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+                            </button>
+
+                            <!-- 2. Status ändern -->
+                            <button onclick="triggerStatusChange(currentActivePropId)" class="w-full text-left text-sm px-3.5 py-2.5 rounded-lg bg-surface-50 hover:bg-surface-100 flex items-center justify-between text-slate-800 font-semibold transition border border-surface-200">
+                                <span class="flex items-center gap-2.5">
+                                    <i class="fa-solid fa-arrow-right-arrow-left text-blue-600 w-4"></i> Status ändern
+                                </span>
+                                <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+                            </button>
+
+                            <!-- 3. Exposé ansehen -->
+                            <button onclick="triggerViewExpose(currentActivePropId)" class="w-full text-left text-sm px-3.5 py-2.5 rounded-lg bg-surface-50 hover:bg-surface-100 flex items-center justify-between text-slate-800 font-semibold transition border border-surface-200">
+                                <span class="flex items-center gap-2.5">
+                                    <i class="fa-solid fa-file-pdf text-red-500 w-4"></i> Exposé ansehen
+                                </span>
+                                <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i>
+                            </button>
+
+                            <!-- Secondary Actions -->
+                            <div class="pt-2 border-t border-surface-100 space-y-2">
+                                <button onclick="showModal('activate-tx-modal')" class="w-full text-left text-sm px-3.5 py-2.5 rounded-lg bg-brand-50 hover:bg-brand-100 flex items-center gap-2.5 text-brand-700 font-semibold transition border border-brand-200">
+                                    <i class="fa-solid fa-rocket text-brand-600 w-4"></i> Kaufvertrag einleiten
+                                </button>
+                                <button onclick="exportCostSummary()" class="w-full text-left text-sm px-3.5 py-2 rounded-lg hover:bg-surface-50 flex items-center gap-2.5 text-slate-600 transition">
+                                    <i class="fa-solid fa-file-arrow-down text-slate-400 w-4"></i> Kostenaufstellung (PDF)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Discrepancy Watch Box -->
+                    <div class="bg-rose-50/60 border border-rose-200 rounded-xl p-5 shadow-xs">
+                        <div class="flex items-center gap-2 text-rose-800 font-bold text-sm">
+                            <i class="fa-solid fa-shield-halved text-rose-600"></i>
+                            <span>Exposé-Plausibilitätsprüfung</span>
+                        </div>
+                        <p class="text-xs text-rose-700 mt-2 leading-relaxed">
+                            Makler haften nicht für unvollständige Exposé-Angaben. Prüfen Sie diese Punkte:
+                        </p>
+                        <ul class="text-xs text-rose-900 mt-2.5 space-y-1.5 list-disc list-inside">
+                            <li><strong>Wirtschaftsplan:</strong> Reales Hausgeld prüfen</li>
+                            <li><strong>Provision:</strong> Vereinbarung schriftlich vor Notartermin</li>
+                            <li><strong>Sonderumlagen:</strong> Letzte 3 Jahre Protokolle anfordern</li>
+                        </ul>
+                    </div>
+
+                    <!-- Contact -->
+                    <div class="bg-white rounded-xl border border-surface-200 p-5 shadow-xs">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Zuständiger Makler</h3>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">TM</div>
+                            <div>
+                                <div class="text-sm font-semibold text-slate-900" id="detailMaklerName">Thomas Müller</div>
+                                <div class="text-xs text-slate-400" id="detailMaklerAgency">RE/MAX München Schwabing</div>
+                                <div class="text-xs text-brand-600 mt-0.5"><i class="fa-solid fa-phone text-[10px]"></i> +49 89 1234567</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- VIEW: OBJECT DETAIL WITH TRANSACTION (Copilot activated)     -->
+        <!-- ============================================================ -->
+        <div id="view-object-detail-tx" class="view fade-in">
+            <button onclick="navigateTo('objects')" class="text-sm text-slate-500 hover:text-slate-900 mb-4 flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Zurück zu Objekte
+            </button>
+
+            <!-- Property Context Ribbon -->
+            <div class="bg-slate-900 text-white rounded-xl p-5 mb-6 shadow-lg">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded text-xs font-semibold bg-brand-500 text-white">In Abwicklung</span>
+                            <span class="px-2 py-0.5 rounded text-xs font-medium bg-slate-700 text-slate-300">ETW</span>
+                            <span class="px-2 py-0.5 rounded text-xs font-semibold bg-rose-900/80 text-rose-200 border border-rose-700 cursor-pointer" onclick="loadPropertyCostView('schwabing'); navigateTo('object-detail');">
+                                <i class="fa-solid fa-calculator mr-1"></i>Kostenrechner
+                            </span>
+                        </div>
+                        <h1 class="text-lg font-bold mt-1.5">3-Zi Altbau Schwabing</h1>
+                        <p class="text-xs text-slate-400 mt-0.5">
+                            Leopoldstr. 42, 80802 München · Kaufpreis: <span class="text-white font-semibold">485.000 €</span> · Notartermin: <span class="text-slate-200">12.11.2026</span>
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div>
+                            <div class="text-xs text-slate-400">Fortschritt</div>
+                            <div class="text-brand-400 font-bold text-lg" id="txProgressPct">60%</div>
+                        </div>
+                        <div class="w-28 bg-slate-700 h-2.5 rounded-full overflow-hidden">
+                            <div id="txProgressBar" class="bg-brand-400 h-2.5 rounded-full transition-all duration-500" style="width: 60%"></div>
+                        </div>
+                        <button onclick="loadPropertyCostView('schwabing'); navigateTo('object-detail');" class="text-xs text-brand-300 hover:text-white transition flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700">
+                            <i class="fa-solid fa-calculator text-[11px]"></i> Kosten & Aktionen
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Two-Column: Copilot + Sidebar -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <section class="lg:col-span-8 space-y-5">
+                    <div class="bg-white p-4 rounded-xl border border-surface-200 shadow-sm overflow-x-auto">
+                        <div class="flex items-center justify-between min-w-[580px] text-xs font-medium" id="stageTracker"></div>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-surface-200 shadow-sm p-6">
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center pb-4 border-b border-surface-100 gap-2">
+                            <div>
+                                <span id="txStageBadge" class="px-2 py-0.5 rounded text-xs font-semibold bg-brand-100 text-brand-700 uppercase">Phase 4</span>
+                                <h2 id="txStageTitle" class="text-xl font-bold text-slate-900 mt-1"></h2>
+                            </div>
+                            <div id="txStageMeta" class="text-right text-xs text-slate-500"></div>
+                        </div>
+                        <p id="txStageDesc" class="py-4 text-sm text-slate-600 leading-relaxed"></p>
+
+                        <div class="space-y-3">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Meilensteine & Voraussetzungen</h3>
+                            <div id="txTaskList" class="space-y-2"></div>
+                        </div>
+
+                        <div id="txActionBar" class="mt-6 pt-4 border-t border-surface-100 flex flex-wrap items-center justify-between gap-3"></div>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-surface-200 shadow-sm p-6">
+                        <div class="flex items-center justify-between pb-4 border-b border-surface-100">
+                            <div>
+                                <h2 class="text-lg font-bold text-slate-900">Transaktions-Dokumentenraum</h2>
+                                <p class="text-xs text-slate-500">Verschlüsselte Ablage nach DSGVO-Standards</p>
+                            </div>
+                            <button onclick="showModal('upload-modal')" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition shadow-sm">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Hochladen
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto mt-4">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wider border-b border-surface-200">
+                                        <th class="py-2.5">Dokument</th>
+                                        <th class="py-2.5">Kategorie</th>
+                                        <th class="py-2.5">Status</th>
+                                        <th class="py-2.5 text-right">Aktion</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="txDocTable" class="text-xs divide-y divide-surface-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <aside class="lg:col-span-4 space-y-5">
+                    <div class="bg-gradient-to-br from-legal-50 to-surface-50 border border-legal-100 rounded-xl p-5 shadow-sm">
+                        <div class="flex items-center gap-2 text-legal-700 font-bold text-sm">
+                            <i class="fa-solid fa-scale-balanced"></i>
+                            <span>Käuferschutz & Fristen</span>
+                        </div>
+                        <div class="mt-3 space-y-3">
+                            <div>
+                                <div class="flex justify-between items-center text-xs">
+                                    <span class="font-medium text-slate-700">14-Tage-Prüffrist (§ 17 BeurkG)</span>
+                                    <span class="text-emerald-700 font-bold bg-emerald-100 px-1.5 py-0.5 rounded text-[10px]">Erfüllt</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Entwurf lag 16 Tage vor Beurkundung vor.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-surface-200 shadow-sm p-5">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Transaktionspartner</h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-2.5 text-xs">
+                                <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold">MM</div>
+                                <div><div class="font-semibold">Max Mustermann <span class="text-[10px] text-brand-600 bg-brand-50 px-1 py-0.5 rounded">Sie</span></div><div class="text-[10px] text-slate-500">Käufer</div></div>
+                            </div>
+                            <div class="flex items-center gap-2.5 text-xs">
+                                <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">IM</div>
+                                <div><div class="font-semibold">ImmoPartner GmbH</div><div class="text-[10px] text-slate-500">Makler</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- VIEW: TRANSACTIONS LIST                                      -->
+        <!-- ============================================================ -->
+        <div id="view-transactions" class="view fade-in">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900">Transaktionen</h1>
+                    <p class="text-sm text-slate-500 mt-0.5">1 aktive Transaktion</p>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-surface-200 shadow-sm overflow-hidden card-hover cursor-pointer" onclick="navigateTo('object-detail-tx')">
+                <div class="p-6">
+                    <div class="flex items-start justify-between">
+                        <div class="flex items-start gap-4">
+                            <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-brand-100 to-emerald-50 flex items-center justify-center flex-shrink-0">
+                                <i class="fa-solid fa-building text-brand-600 text-xl"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="px-2 py-0.5 rounded text-xs font-semibold bg-brand-100 text-brand-700">Phase 4 / 5</span>
+                                    <span class="text-xs text-slate-400">seit 18.10.2026</span>
+                                </div>
+                                <h2 class="text-lg font-bold text-slate-900">3-Zi Altbau Schwabing</h2>
+                                <p class="text-sm text-slate-500">Leopoldstr. 42, 80802 München · 485.000 €</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-sm font-bold text-brand-600">60%</div>
+                            <div class="w-24 bg-surface-100 h-2 rounded-full overflow-hidden mt-1">
+                                <div class="bg-brand-500 h-2 rounded-full" style="width: 60%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- VIEW: ADD PROPERTY FORM                                      -->
+        <!-- ============================================================ -->
+        <div id="view-form" class="view fade-in">
+            <button onclick="navigateTo('objects')" class="text-sm text-slate-500 hover:text-slate-900 mb-4 flex items-center gap-1.5 transition">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Abbrechen
+            </button>
+            <div class="max-w-2xl">
+                <h1 class="text-xl font-bold text-slate-900 mb-1">Neues Objekt anlegen</h1>
+                <p class="text-sm text-slate-500 mb-6">Grunddaten eingeben — Details können Sie jederzeit ergänzen.</p>
+                <div class="bg-white rounded-xl border border-surface-200 p-6 space-y-5">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="sm:col-span-2"><label class="block text-xs font-semibold text-slate-600 mb-1.5">Bezeichnung *</label><input type="text" placeholder='z.B. "3-Zi ETW Schwabing"' class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Objektart *</label><select class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm bg-white"><option value="">Bitte wählen</option><option>ETW</option><option>EFH</option><option>DHH</option><option>REH</option><option>RMH</option><option>MFH</option><option>Grundstück</option></select></div>
+                        <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Kaufpreis (€) *</label><input type="text" placeholder="485.000" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                        <div class="sm:col-span-2"><label class="block text-xs font-semibold text-slate-600 mb-1.5">Adresse *</label><input type="text" placeholder="Straße und Hausnummer" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">PLZ *</label><input type="text" placeholder="80802" maxlength="5" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Ort *</label><input type="text" placeholder="München" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Wohnfläche (m²) *</label><input type="text" placeholder="78" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                        <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Zimmer *</label><input type="text" placeholder="3" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                    </div>
+                    <div class="flex items-center justify-between pt-3 border-t border-surface-100">
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i>Wird automatisch gespeichert</span>
+                        <button onclick="navigateTo('objects')" class="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-sm">Objekt speichern</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- ============================================================ -->
+    <!-- MODALS: ACTIONS & UTILITIES                                  -->
+    <!-- ============================================================ -->
+
+    <!-- ========== 1. MODAL: BEARBEITEN (EDIT OBJECT) ========== -->
+    <div id="edit-object-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 fade-in overflow-hidden">
+            <div class="px-6 pt-6 pb-4 border-b border-surface-100 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-surface-100 text-slate-700 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900">Objekt bearbeiten</h2>
+                        <p class="text-xs text-slate-400">Aktualisieren Sie die Objektdaten</p>
+                    </div>
+                </div>
+                <button onclick="hideModal('edit-object-modal')" class="w-8 h-8 rounded-lg hover:bg-surface-100 flex items-center justify-center text-slate-400 hover:text-slate-700 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4 max-h-[75vh] overflow-y-auto text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Bezeichnung *</label>
+                    <input type="text" id="editModalTitle" class="w-full px-3 py-2 rounded-lg border border-surface-200 text-sm font-medium">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Objektart</label>
+                        <select id="editModalType" class="w-full px-3 py-2 rounded-lg border border-surface-200 text-sm bg-white">
+                            <option value="ETW">ETW — Eigentumswohnung</option>
+                            <option value="EFH">EFH — Einfamilienhaus</option>
+                            <option value="DHH">DHH — Doppelhaushälfte</option>
+                            <option value="REH">REH — Reihenendhaus</option>
+                            <option value="RMH">RMH — Reihenmittelhaus</option>
+                            <option value="MFH">MFH — Mehrfamilienhaus</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Kaufpreis (€) *</label>
+                        <input type="number" id="editModalPrice" step="1000" class="w-full px-3 py-2 rounded-lg border border-surface-200 text-sm font-medium">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Adresse *</label>
+                    <input type="text" id="editModalAddress" class="w-full px-3 py-2 rounded-lg border border-surface-200 text-sm">
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Wohnfläche (m²)</label>
+                        <input type="number" id="editModalArea" class="w-full px-3 py-2 rounded-lg border border-surface-200 text-sm">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Zimmer</label>
+                        <input type="number" id="editModalRooms" step="0.5" class="w-full px-3 py-2 rounded-lg border border-surface-200 text-sm">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">Baujahr</label>
+                        <input type="number" id="editModalYear" class="w-full px-3 py-2 rounded-lg border border-surface-200 text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Monatliches Hausgeld (€/Mtl.)</label>
+                    <input type="number" id="editModalHausgeld" class="w-full px-3 py-2 rounded-lg border border-surface-200 text-sm">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Persönliche Notizen</label>
+                    <textarea id="editModalNotes" rows="2" class="w-full px-3 py-2 rounded-lg border border-surface-200 text-sm resize-none"></textarea>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-surface-100 flex items-center justify-end gap-2 bg-surface-50">
+                <button onclick="hideModal('edit-object-modal')" class="px-4 py-2 border border-surface-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-white transition">
+                    Abbrechen
+                </button>
+                <button onclick="saveEditedObject()" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition shadow-sm">
+                    Änderungen speichern
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 2. MODAL: STATUS ÄNDERN ========== -->
+    <div id="status-object-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 fade-in overflow-hidden">
+            <div class="px-6 pt-6 pb-3 border-b border-surface-100 flex items-center justify-between">
+                <div>
+                    <h2 class="text-base font-bold text-slate-900">Status ändern</h2>
+                    <p class="text-xs text-slate-400" id="statusModalPropTitle">Objekt auswählen</p>
+                </div>
+                <button onclick="hideModal('status-object-modal')" class="w-8 h-8 rounded-lg hover:bg-surface-100 flex items-center justify-center text-slate-400 hover:text-slate-700 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-2.5 text-xs">
+                <!-- Status Option 1 -->
+                <div onclick="applyStatusChange('🔍 Interessiert')" class="p-3 rounded-xl border border-surface-200 hover:border-brand-400 hover:bg-surface-50 cursor-pointer flex items-center justify-between transition">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center font-bold">🔍</span>
+                        <div>
+                            <div class="font-bold text-slate-900 text-sm">Interessiert</div>
+                            <div class="text-[11px] text-slate-400">Exposé gesichtet, in die engere Wahl genommen</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+                </div>
+
+                <!-- Status Option 2 -->
+                <div onclick="applyStatusChange('📅 Besichtigung geplant')" class="p-3 rounded-xl border border-surface-200 hover:border-brand-400 hover:bg-surface-50 cursor-pointer flex items-center justify-between transition">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 flex items-center justify-center font-bold">📅</span>
+                        <div>
+                            <div class="font-bold text-slate-900 text-sm">Besichtigung geplant</div>
+                            <div class="text-[11px] text-slate-400">Termin vereinbart oder angefragt</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+                </div>
+
+                <!-- Status Option 3 -->
+                <div onclick="applyStatusChange('✅ Besichtigt')" class="p-3 rounded-xl border border-surface-200 hover:border-brand-400 hover:bg-surface-50 cursor-pointer flex items-center justify-between transition">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">✅</span>
+                        <div>
+                            <div class="font-bold text-slate-900 text-sm">Besichtigt</div>
+                            <div class="text-[11px] text-slate-400">Vor Ort geprüft, Unterlagen werden ausgewertet</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+                </div>
+
+                <!-- Status Option 4 -->
+                <div onclick="applyStatusChange('💬 In Verhandlung')" class="p-3 rounded-xl border border-surface-200 hover:border-brand-400 hover:bg-surface-50 cursor-pointer flex items-center justify-between transition">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-bold">💬</span>
+                        <div>
+                            <div class="font-bold text-slate-900 text-sm">In Verhandlung</div>
+                            <div class="text-[11px] text-slate-400">Kaufpreisangebot abgegeben, Bonität vorgelegt</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+                </div>
+
+                <!-- Status Option 5: Kaufvertrag (Triggers Copilot) -->
+                <div onclick="applyStatusChange('📝 Kaufvertrag')" class="p-3 rounded-xl border-2 border-brand-300 bg-brand-50/40 hover:bg-brand-50 cursor-pointer flex items-center justify-between transition">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-lg bg-brand-600 text-white flex items-center justify-center font-bold">📝</span>
+                        <div>
+                            <div class="font-bold text-brand-900 text-sm flex items-center gap-1.5">
+                                Kaufvertrag eingeleitet
+                                <span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-brand-600 text-white">Copilot</span>
+                            </div>
+                            <div class="text-[11px] text-brand-700">Notartermin in Vorbereitung, aktiviert den Copilot</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-rocket text-brand-600 text-xs"></i>
+                </div>
+
+                <!-- Status Option 6 -->
+                <div onclick="applyStatusChange('❌ Abgesagt')" class="p-3 rounded-xl border border-surface-200 hover:border-red-300 hover:bg-red-50/30 cursor-pointer flex items-center justify-between transition">
+                    <div class="flex items-center gap-3">
+                        <span class="w-8 h-8 rounded-lg bg-red-50 text-red-700 flex items-center justify-center font-bold">❌</span>
+                        <div>
+                            <div class="font-bold text-slate-900 text-sm">Abgesagt / Nicht weiter verfolgt</div>
+                            <div class="text-[11px] text-slate-400">Objekt entspricht nicht oder anderweitig verkauft</div>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-slate-300 text-xs"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 3. MODAL: EXPOSÉ ANSEHEN ========== -->
+    <div id="view-expose-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl mx-4 fade-in overflow-hidden">
+            <div class="px-6 pt-6 pb-4 border-b border-surface-100 flex items-center justify-between bg-surface-50">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center text-sm font-bold">
+                        <i class="fa-solid fa-file-pdf"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900" id="exposeModalTitle">Exposé</h2>
+                        <p class="text-xs text-slate-400" id="exposeModalSource">ImmoScout24 · ID: 142857</p>
+                    </div>
+                </div>
+                <button onclick="hideModal('view-expose-modal')" class="w-8 h-8 rounded-lg hover:bg-surface-200 flex items-center justify-center text-slate-400 hover:text-slate-700 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto text-xs">
+                <!-- PDF Viewer Preview Box -->
+                <div class="border-2 border-surface-200 rounded-xl p-5 bg-surface-50 text-center space-y-3">
+                    <i class="fa-regular fa-file-pdf text-4xl text-red-500"></i>
+                    <div>
+                        <div class="font-bold text-slate-800 text-sm" id="exposeModalFilename">Exposé_Objekt_Dokument.pdf</div>
+                        <div class="text-xs text-slate-400 mt-0.5">PDF-Dokument · 24 Seiten · 4.8 MB</div>
+                    </div>
+                    <div class="flex justify-center gap-2 pt-1">
+                        <button onclick="alert('Download gestartet: Original-Exposé')" class="px-3.5 py-1.5 rounded-lg bg-white border border-surface-200 text-slate-700 font-semibold hover:bg-surface-100 flex items-center gap-1.5 shadow-2xs">
+                            <i class="fa-solid fa-download text-xs text-slate-400"></i> Herunterladen
+                        </button>
+                        <button onclick="alert('Öffne Web-Exposé im neuen Tab')" class="px-3.5 py-1.5 rounded-lg bg-white border border-surface-200 text-brand-700 font-semibold hover:bg-surface-100 flex items-center gap-1.5 shadow-2xs">
+                            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i> Online ansehen
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Extracted Key Numbers from Exposé -->
+                <div>
+                    <h4 class="font-bold text-slate-700 uppercase tracking-wider text-[11px] mb-2">Aus dem Exposé extrahierte Daten</h4>
+                    <div class="grid grid-cols-2 gap-2 bg-white rounded-xl border border-surface-100 p-3">
+                        <div class="flex justify-between py-1 border-b border-surface-100">
+                            <span class="text-slate-400">Angebotspreis:</span>
+                            <span class="font-bold text-slate-800" id="exposeModalPrice">485.000 €</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-surface-100">
+                            <span class="text-slate-400">Wohnfläche:</span>
+                            <span class="font-semibold text-slate-800" id="exposeModalArea">78 m²</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-surface-100">
+                            <span class="text-slate-400">Maklerprovision:</span>
+                            <span class="font-semibold text-slate-800" id="exposeModalMakler">Provisionsfrei beworben</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-surface-100">
+                            <span class="text-slate-400">Hausgeld:</span>
+                            <span class="font-semibold text-slate-800" id="exposeModalHausgeld">280 € / Mtl.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Callout to Cost Calculator -->
+                <div class="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between text-rose-800">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-calculator text-rose-600"></i>
+                        <span class="font-medium text-xs">Diese Angaben weichen von den Real-Kosten ab!</span>
+                    </div>
+                    <button onclick="hideModal('view-expose-modal'); navigateTo('object-detail');" class="text-xs font-bold text-rose-700 underline hover:text-rose-900">
+                        Kostenrechner öffnen →
+                    </button>
+                </div>
+            </div>
+
+            <div class="px-6 py-3 border-t border-surface-100 flex justify-end bg-surface-50">
+                <button onclick="hideModal('view-expose-modal')" class="px-4 py-2 border border-surface-200 rounded-lg text-xs font-semibold text-slate-700 bg-white">
+                    Schließen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 4. IMPORT MODAL ========== -->
+    <div id="import-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 fade-in overflow-hidden">
+            <div class="px-6 pt-6 pb-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-bold text-slate-900">Objekt hinzufügen</h2>
+                    <button onclick="hideModal('import-modal')" class="w-8 h-8 rounded-lg hover:bg-surface-100 flex items-center justify-center text-slate-400 hover:text-slate-700 transition"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div class="px-6 pb-2 space-y-3">
+                <div id="opt-url" class="border-2 border-surface-200 rounded-xl p-4 cursor-pointer hover:border-brand-400 transition" onclick="selectImport('url')">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-link text-blue-600"></i></div>
+                        <div class="flex-1">
+                            <div class="text-sm font-semibold text-slate-900">Web-Link einfügen</div>
+                            <div class="text-xs text-slate-500 mt-0.5">ImmoScout24, Immowelt — automatisch extrahiert</div>
+                            <div id="url-input-area" class="mt-3 hidden">
+                                <div class="flex gap-2"><input type="text" placeholder="https://www.immobilienscout24.de/expose/..." class="flex-1 px-3 py-2.5 rounded-lg border border-surface-200 text-sm"><button onclick="simulateImport()" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition flex-shrink-0"><i class="fa-solid fa-sparkles mr-1"></i>Import</button></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="opt-pdf" class="border-2 border-surface-200 rounded-xl p-4 cursor-pointer hover:border-brand-400 transition" onclick="selectImport('pdf')">
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-file-pdf text-red-500"></i></div>
+                        <div class="flex-1">
+                            <div class="text-sm font-semibold text-slate-900">Exposé-PDF hochladen</div>
+                            <div class="text-xs text-slate-500 mt-0.5">PDF analysieren und Felder extrahieren</div>
+                            <div id="pdf-input-area" class="mt-3 hidden">
+                                <div class="border-2 border-dashed border-surface-200 rounded-lg p-5 text-center hover:border-brand-400 transition"><i class="fa-solid fa-cloud-arrow-up text-xl text-slate-300 mb-1.5"></i><div class="text-sm text-slate-500">PDF ablegen oder <span class="text-brand-600 font-medium">auswählen</span></div></div>
+                                <button onclick="simulateImport()" class="mt-3 w-full px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition"><i class="fa-solid fa-sparkles mr-1"></i>Analysieren</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 text-[11px] text-slate-400 text-center"><i class="fa-solid fa-lock text-[10px] mr-0.5"></i> Daten werden lokal gespeichert.</div>
+        </div>
+    </div>
+
+    <!-- ========== 5. MODAL: ACTIVATE TRANSACTION ========== -->
+    <div id="activate-tx-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 fade-in overflow-hidden">
+            <div class="p-6">
+                <div class="w-12 h-12 rounded-full bg-brand-50 flex items-center justify-center mx-auto mb-4"><i class="fa-solid fa-rocket text-brand-600 text-xl"></i></div>
+                <h3 class="text-lg font-bold text-slate-900 text-center">Kaufvertrag einleiten</h3>
+                <p class="text-sm text-slate-500 text-center mt-1">Der Transaction Copilot wird aktiviert und begleitet Sie durch den gesamten Kaufprozess.</p>
+                <div class="mt-5 space-y-3">
+                    <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Geplanter Notartermin (optional)</label><input type="date" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                    <div><label class="block text-xs font-semibold text-slate-600 mb-1.5">Notar/in (optional)</label><input type="text" placeholder="z.B. Dr. Schmidt, München" class="w-full px-3 py-2.5 rounded-lg border border-surface-200 text-sm"></div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-surface-100 flex justify-between bg-surface-50">
+                <button onclick="hideModal('activate-tx-modal')" class="text-sm text-slate-500">Später</button>
+                <button onclick="hideModal('activate-tx-modal'); navigateTo('object-detail-tx'); activateTxBadge();" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition shadow-sm flex items-center gap-1.5">
+                    Copilot starten <i class="fa-solid fa-arrow-right text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 6. MODAL: UPLOAD DOC ========== -->
+    <div id="upload-modal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 fade-in overflow-hidden">
+            <div class="px-6 pt-6 pb-3 flex justify-between items-center border-b border-surface-100">
+                <h3 class="font-bold text-slate-900 text-sm">Dokument hochladen</h3>
+                <button onclick="hideModal('upload-modal')" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-6 space-y-3 text-xs">
+                <div><label class="block font-medium text-slate-700 mb-1">Dokumentenart</label><select class="w-full border border-surface-200 rounded-lg p-2.5 text-sm"><option>Einkommensnachweis (Bonität)</option><option>Objektunterlage</option><option>Notarielle Urkunde</option><option>Zahlungsnachweis (§ 16a GwG)</option></select></div>
+                <div class="border-2 border-dashed border-surface-200 rounded-lg p-6 text-center hover:bg-surface-50 cursor-pointer"><i class="fa-solid fa-file-arrow-up text-2xl text-slate-300 mb-2"></i><p class="text-sm text-slate-500">PDF hier ablegen</p></div>
+            </div>
+            <div class="px-6 py-4 border-t border-surface-100 flex justify-end gap-2">
+                <button onclick="hideModal('upload-modal')" class="px-3 py-2 border border-surface-200 rounded-lg text-sm text-slate-600 font-medium">Abbrechen</button>
+                <button onclick="hideModal('upload-modal')" class="px-3 py-2 bg-brand-600 text-white rounded-lg text-sm font-semibold hover:bg-brand-700">Hochladen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== SCRIPTS ========== -->
+    <script>
+        // -------- Property & Cost Data Model --------
+        const propertiesData = {
+            schwabing: {
+                id: 'schwabing',
+                title: '3-Zi Altbau Schwabing',
+                type: 'ETW',
+                status: '📝 Kaufvertrag',
+                address: 'Leopoldstr. 42, 80802 München',
+                livingArea: 78,
+                rooms: 3,
+                buildYear: 1965,
+                condition: 'Gepflegt (Sanierungsbedarf im Bad)',
+                heating: 'Gas-Zentralheizung',
+                parking: 'TG-Stellplatz',
+                outdoor: 'Balkon (Südseite)',
+                cellar: 'Ja, eigenes Kellerabteil',
+                energy: 'D — 128 kWh/m²a',
+                maklerName: 'Thomas Müller',
+                maklerAgency: 'RE/MAX München Schwabing',
+                notes: 'Makler angesprochen wegen Provision („Laut Portal ohne Provision"). Notariat klärt Entwurf. Preisverhandlung um 10.000 € wegen Renovierungsstau im Bad möglich.',
+                
+                expose: {
+                    price: 485000,
+                    priceNote: 'Angebotspreis lt. Portal',
+                    maklerRate: 0.0,
+                    maklerNote: '0,00 % (Provisionsfrei beworben!)',
+                    notarCost: 0,
+                    notarNote: 'Im Exposé nicht aufgeführt',
+                    grunderwerbsteuer: 0,
+                    steuerNote: 'Im Exposé nicht aufgeführt',
+                    renovation: 0,
+                    renovationNote: '„Sofort bezugsfertig, top Zustand"',
+                    hausgeld: 280,
+                    hausgeldNote: '280 € / Mtl. lt. Exposé',
+                    sonderumlage: 0,
+                    sonderumlageNote: 'Keine Angaben im Exposé'
+                },
+
+                actual: {
+                    price: 485000,
+                    maklerRate: 3.57,
+                    maklerReason: '⚠️ Maklervertrag / Reservierung verlangt 3,57% Courtage!',
+                    notarRate: 2.0,
+                    taxRate: 3.5,
+                    renovation: 15000,
+                    renovationReason: '⚠️ Gutachter empfiehlt Badsanierung & Leitungen (ca. 15.000 €)',
+                    hausgeld: 380,
+                    hausgeldReason: '⚠️ Wirtschaftsplan 2026 beschlossen: 380 €/Mtl. (+100 €)!',
+                    sonderumlage: 3000,
+                    sonderumlageReason: '⚠️ WEG-Beschluss 05/2026: 3.000 € Dachsanierung fällig!',
+                    equity: 100000,
+                    zinsRate: 3.6,
+                    tilgungRate: 2.0
+                }
+            },
+            pasing: {
+                id: 'pasing',
+                title: 'Doppelhaushälfte Pasing',
+                type: 'DHH',
+                status: '💬 In Verhandlung',
+                address: 'Am Knie 8, 81243 München',
+                livingArea: 112,
+                rooms: 5,
+                buildYear: 2001,
+                condition: 'Gepflegt',
+                heating: 'Gas-Brennwert',
+                parking: 'Doppelgarage',
+                outdoor: 'Garten (Südwest, 310 m²)',
+                cellar: 'Ja, voll unterkellert',
+                energy: 'C — 98 kWh/m²a',
+                maklerName: 'Claudia Huber',
+                maklerAgency: 'Engel & Völkers München West',
+                notes: 'Gute Lage, ruhige Straße. Dach 2018 neu eingedeckt. Kaufpreisverhandlung von 720k auf 705k erfolgreich avisiert.',
+
+                expose: {
+                    price: 720000,
+                    priceNote: 'Angebotspreis',
+                    maklerRate: 3.57,
+                    maklerNote: '3,57% inkl. MwSt.',
+                    notarCost: 0,
+                    notarNote: 'Nicht beziffert',
+                    grunderwerbsteuer: 0,
+                    steuerNote: 'Nicht beziffert',
+                    renovation: 0,
+                    renovationNote: 'Kein Renovierungsbedarf',
+                    hausgeld: 0,
+                    hausgeldNote: 'Entfällt (DHH)',
+                    sonderumlage: 0,
+                    sonderumlageNote: 'Entfällt'
+                },
+
+                actual: {
+                    price: 705000,
+                    maklerRate: 3.57,
+                    maklerReason: '3,57% Courtage vereinbart',
+                    notarRate: 2.0,
+                    taxRate: 3.5,
+                    renovation: 18000,
+                    renovationReason: '⚠️ Malerarbeiten + Modernisierung Gastherme geplant',
+                    hausgeld: 0,
+                    hausgeldReason: 'Kein Hausgeld (nur eigene Nebenkosten ca. 320 €)',
+                    sonderumlage: 0,
+                    sonderumlageReason: 'Keine Sonderumlage',
+                    equity: 150000,
+                    zinsRate: 3.6,
+                    tilgungRate: 2.0
+                }
+            },
+            sendling: {
+                id: 'sendling',
+                title: '2-Zi Neubau Sendling',
+                type: 'ETW',
+                status: '🔍 Interessiert',
+                address: 'Plinganserstr. 15, 81369 München',
+                livingArea: 55,
+                rooms: 2,
+                buildYear: 2024,
+                condition: 'Erstbezug (Neubau)',
+                heating: 'Fernwärme / Fußbodenheizung',
+                parking: 'TG-Duplex',
+                outdoor: 'Loggia (West)',
+                cellar: 'Ja, Kellerabteil',
+                energy: 'A+ — 22 kWh/m²a',
+                maklerName: 'Stefan Weber',
+                maklerAgency: 'Bauwerk Capital München',
+                notes: 'Neubau Erstbezug. 5 Jahre Gewährleistung durch Bauträger. Sonderausstattung Parkett ausgewählt.',
+
+                expose: {
+                    price: 355000,
+                    priceNote: 'Bauträgerpreis schlüsselfertig',
+                    maklerRate: 0.0,
+                    maklerNote: 'Provisionsfrei (Direkt vom Bauträger)',
+                    notarCost: 0,
+                    notarNote: 'Nicht beziffert',
+                    grunderwerbsteuer: 0,
+                    steuerNote: 'Nicht beziffert',
+                    renovation: 0,
+                    renovationNote: 'Kein Renovierungsbedarf',
+                    hausgeld: 195,
+                    hausgeldNote: '195 € / Mtl. prognostiziert',
+                    sonderumlage: 0,
+                    sonderumlageNote: 'Keine'
+                },
+
+                actual: {
+                    price: 355000,
+                    maklerRate: 0.0,
+                    maklerReason: '✓ Provisionsfrei (Bauträger übernimmt)',
+                    notarRate: 2.0,
+                    taxRate: 3.5,
+                    renovation: 0,
+                    renovationReason: 'Kein Sanierungsbedarf (Neubau)',
+                    hausgeld: 230,
+                    hausgeldReason: '⚠️ Reales Hausgeld ca. 230 € wegen TG-Wartung',
+                    sonderumlage: 0,
+                    sonderumlageReason: 'Keine Sonderumlage',
+                    equity: 70000,
+                    zinsRate: 3.6,
+                    tilgungRate: 2.0
+                }
+            }
+        };
+
+        let currentActivePropId = 'schwabing';
+        let currentCostFilter = 'all';
+
+        // ==========================================
+        // 1. ACTION: BEARBEITEN (EDIT OBJECT)
+        // ==========================================
+        function triggerEditObject(propId) {
+            currentActivePropId = propId;
+            const prop = propertiesData[propId];
+            if (!prop) return;
+
+            document.getElementById('editModalTitle').value = prop.title;
+            document.getElementById('editModalType').value = prop.type;
+            document.getElementById('editModalPrice').value = prop.actual.price;
+            document.getElementById('editModalAddress').value = prop.address;
+            document.getElementById('editModalArea').value = prop.livingArea;
+            document.getElementById('editModalRooms').value = prop.rooms;
+            document.getElementById('editModalYear').value = prop.buildYear;
+            document.getElementById('editModalHausgeld').value = prop.actual.hausgeld;
+            document.getElementById('editModalNotes').value = prop.notes || '';
+
+            showModal('edit-object-modal');
+        }
+
+        function saveEditedObject() {
+            const prop = propertiesData[currentActivePropId];
+            if (!prop) return;
+
+            prop.title = document.getElementById('editModalTitle').value;
+            prop.type = document.getElementById('editModalType').value;
+            prop.actual.price = parseFloat(document.getElementById('editModalPrice').value) || prop.actual.price;
+            prop.address = document.getElementById('editModalAddress').value;
+            prop.livingArea = parseFloat(document.getElementById('editModalArea').value) || prop.livingArea;
+            prop.rooms = parseFloat(document.getElementById('editModalRooms').value) || prop.rooms;
+            prop.buildYear = parseInt(document.getElementById('editModalYear').value) || prop.buildYear;
+            prop.actual.hausgeld = parseFloat(document.getElementById('editModalHausgeld').value) || 0;
+            prop.notes = document.getElementById('editModalNotes').value;
+
+            // Sync Card in list view
+            const cardTitle = document.getElementById(`card-title-${currentActivePropId}`);
+            if (cardTitle) cardTitle.textContent = prop.title;
+            const cardAddr = document.getElementById(`card-addr-${currentActivePropId}`);
+            if (cardAddr) cardAddr.innerHTML = `<i class="fa-solid fa-location-dot text-[10px]"></i> ${prop.address}`;
+            const cardPrice = document.getElementById(`card-price-${currentActivePropId}`);
+            if (cardPrice) cardPrice.textContent = formatEur(prop.actual.price).replace(' €','');
+            const cardArea = document.getElementById(`card-area-${currentActivePropId}`);
+            if (cardArea) cardArea.innerHTML = `<i class="fa-solid fa-ruler-combined mr-1"></i>${prop.livingArea} m²`;
+
+            hideModal('edit-object-modal');
+            loadPropertyCostView(currentActivePropId);
+        }
+
+        // ==========================================
+        // 2. ACTION: STATUS ÄNDERN
+        // ==========================================
+        function triggerStatusChange(propId) {
+            currentActivePropId = propId;
+            const prop = propertiesData[propId];
+            if (!prop) return;
+
+            document.getElementById('statusModalPropTitle').textContent = `${prop.title} · Aktuell: ${prop.status}`;
+            showModal('status-object-modal');
+        }
+
+        function applyStatusChange(newStatus) {
+            const prop = propertiesData[currentActivePropId];
+            if (!prop) return;
+
+            prop.status = newStatus;
+            
+            // Update Card in list
+            const cardBadge = document.getElementById(`card-status-${currentActivePropId}`);
+            if (cardBadge) cardBadge.textContent = newStatus;
+
+            // Update Detail Badge
+            const detailBadge = document.getElementById('detailStatusBadge');
+            if (detailBadge) detailBadge.textContent = newStatus;
+
+            hideModal('status-object-modal');
+
+            // If user selects Kaufvertrag, suggest starting copilot
+            if (newStatus.includes('Kaufvertrag')) {
+                showModal('activate-tx-modal');
+            }
+        }
+
+        // ==========================================
+        // 3. ACTION: EXPOSÉ ANSEHEN
+        // ==========================================
+        function triggerViewExpose(propId) {
+            currentActivePropId = propId;
+            const prop = propertiesData[propId];
+            if (!prop) return;
+
+            document.getElementById('exposeModalTitle').textContent = `Exposé: ${prop.title}`;
+            document.getElementById('exposeModalSource').textContent = `Quelle: ImmoScout24 · ${prop.address}`;
+            document.getElementById('exposeModalFilename').textContent = `Exposé_${prop.id.toUpperCase()}_München.pdf`;
+            document.getElementById('exposeModalPrice').textContent = formatEur(prop.expose.price);
+            document.getElementById('exposeModalArea').textContent = `${prop.livingArea} m² (${prop.rooms} Zimmer)`;
+            document.getElementById('exposeModalMakler').textContent = prop.expose.maklerRate === 0 ? '0,00 % (Provisionsfrei beworben)' : `${prop.expose.maklerRate}% inkl. MwSt.`;
+            document.getElementById('exposeModalHausgeld').textContent = prop.expose.hausgeld > 0 ? `${prop.expose.hausgeld} € / Monat` : 'Kein Hausgeld (EFH/DHH)';
+
+            showModal('view-expose-modal');
+        }
+
+        // -------- Load and render Property Detail view --------
+        function loadPropertyCostView(propId) {
+            currentActivePropId = propId;
+            const prop = propertiesData[propId];
+            if (!prop) return;
+
+            const sel = document.getElementById('propSelect');
+            if (sel) sel.value = propId;
+
+            // Basic Info Header
+            document.getElementById('detailTitle').textContent = prop.title;
+            document.getElementById('detailAddress').innerHTML = `<i class="fa-solid fa-location-dot text-xs"></i> ${prop.address}`;
+            document.getElementById('detailPriceDisplay').textContent = formatEur(prop.actual.price);
+            document.getElementById('detailSqmPrice').textContent = `${Math.round(prop.actual.price / prop.livingArea)} €/m²`;
+            document.getElementById('detailArea').textContent = `${prop.livingArea} m²`;
+            document.getElementById('detailRooms').textContent = prop.rooms;
+            document.getElementById('detailYear').textContent = prop.buildYear;
+            document.getElementById('detailHausgeldHead').textContent = prop.actual.hausgeld > 0 ? `${prop.actual.hausgeld} €/Mtl.` : '—';
+            document.getElementById('detailTypeBadge').textContent = prop.type;
+            document.getElementById('detailStatusBadge').textContent = prop.status;
+
+            // Accordion specs
+            document.getElementById('detailCondition').textContent = prop.condition;
+            document.getElementById('detailHeating').textContent = prop.heating;
+            document.getElementById('detailParking').textContent = prop.parking;
+            document.getElementById('detailOutdoor').textContent = prop.outdoor;
+            document.getElementById('detailCellar').textContent = prop.cellar;
+            document.getElementById('detailEnergy').textContent = prop.energy;
+            document.getElementById('detailMaklerName').textContent = prop.maklerName;
+            document.getElementById('detailMaklerAgency').textContent = prop.maklerAgency;
+
+            // Inputs in calculation bar
+            document.getElementById('calcPriceInput').value = prop.actual.price;
+            document.getElementById('calcStateInput').value = prop.actual.taxRate.toFixed(1);
+            document.getElementById('calcMaklerRateInput').value = prop.actual.maklerRate.toFixed(2);
+            document.getElementById('calcEquityInput').value = prop.actual.equity;
+
+            recalculateCosts();
+        }
+
+        // Live calculation engine
+        function recalculateCosts() {
+            const prop = propertiesData[currentActivePropId];
+            if (!prop) return;
+
+            const price = parseFloat(document.getElementById('calcPriceInput').value) || prop.actual.price;
+            const taxRate = parseFloat(document.getElementById('calcStateInput').value) || 3.5;
+            const maklerRate = parseFloat(document.getElementById('calcMaklerRateInput').value) || 0.0;
+            const equity = parseFloat(document.getElementById('calcEquityInput').value) || 0;
+            const notarRate = prop.actual.notarRate || 2.0;
+
+            const renovation = prop.actual.renovation || 0;
+            const hausgeld = prop.actual.hausgeld || 0;
+            const sonderumlage = prop.actual.sonderumlage || 0;
+
+            const maklerCost = Math.round(price * (maklerRate / 100));
+            const taxCost = Math.round(price * (taxRate / 100));
+            const notarCost = Math.round(price * (notarRate / 100));
+            const nebenkostenTotal = maklerCost + taxCost + notarCost;
+            const nebenkostenPct = (nebenkostenTotal / price) * 100;
+
+            const totalInvestment = price + nebenkostenTotal + renovation + sonderumlage;
+            const totalDiffToExposeVal = totalInvestment - prop.expose.price;
+
+            const loanAmount = Math.max(0, totalInvestment - equity);
+            const zinsRate = prop.actual.zinsRate || 3.6;
+            const tilgungRate = prop.actual.tilgungRate || 2.0;
+            const monthlyBankRate = Math.round(loanAmount * ((zinsRate + tilgungRate) / 100) / 12);
+            const monthlyTotal = monthlyBankRate + hausgeld;
+
+            document.getElementById('totalNebenkostenDisplay').textContent = formatEur(nebenkostenTotal);
+            document.getElementById('totalNebenkostenPct').textContent = `ca. ${nebenkostenPct.toFixed(2)} % vom Kaufpreis`;
+            document.getElementById('totalInvestmentDisplay').textContent = formatEur(totalInvestment);
+            document.getElementById('totalDiffToExpose').innerHTML = totalDiffToExposeVal > 0 
+                ? `<i class="fa-solid fa-arrow-trend-up"></i> +${formatEur(totalDiffToExposeVal)} über Exposé-Preis`
+                : `<i class="fa-solid fa-arrow-trend-down text-emerald-600"></i> ${formatEur(totalDiffToExposeVal)} ggü. Exposé`;
+
+            document.getElementById('totalMonthlyRateDisplay').textContent = `${formatEur(monthlyTotal)} / Mtl.`;
+            document.getElementById('monthlyBreakdownDisplay').textContent = `Bankrate: ${formatEur(monthlyBankRate)} + Hausgeld: ${formatEur(hausgeld)}`;
+
+            renderComparisonTable({
+                price, maklerRate, maklerCost, taxRate, taxCost, notarRate, notarCost, renovation, hausgeld, sonderumlage, prop
+            });
+        }
+
+        function renderComparisonTable(data) {
+            const { price, maklerRate, maklerCost, taxRate, taxCost, notarRate, notarCost, renovation, hausgeld, sonderumlage, prop } = data;
+            const exp = prop.expose;
+            const act = prop.actual;
+
+            const rows = [
+                {
+                    title: '1. Netto-Kaufpreis',
+                    subtitle: 'Reine Anschaffungskosten des Objekts',
+                    exposeValStr: formatEur(exp.price),
+                    exposeSub: exp.priceNote,
+                    actualValStr: formatEur(price),
+                    actualSub: price !== exp.price ? (price < exp.price ? 'Verhandlungserfolg (-' + formatEur(exp.price - price) + ')' : 'Aufpreis') : 'Angebotspreis unverändert',
+                    hasDiff: price !== exp.price,
+                    diffType: price > exp.price ? 'alert' : (price < exp.price ? 'success' : 'neutral'),
+                    diffBadge: price === exp.price ? '✓ Entspricht Exposé' : (price > exp.price ? `+${formatEur(price - exp.price)} teurer` : `-${formatEur(exp.price - price)} Rabatt`),
+                    note: null
+                },
+                {
+                    title: '2. Maklerprovision (Käuferanteil)',
+                    subtitle: 'Courtage für den Vermittler',
+                    exposeValStr: exp.maklerRate === 0 ? '0,00 € (0 %)' : formatEur(Math.round(exp.price * (exp.maklerRate / 100))),
+                    exposeSub: exp.maklerNote,
+                    actualValStr: `${formatEur(maklerCost)} (${maklerRate.toFixed(2)} %)`,
+                    actualSub: `${maklerRate.toFixed(2)} % inkl. 19% MwSt.`,
+                    hasDiff: Math.abs(maklerRate - exp.maklerRate) > 0.01,
+                    diffType: 'alert',
+                    diffBadge: Math.abs(maklerRate - exp.maklerRate) > 0.01 ? `+${formatEur(maklerCost)} Abweichung!` : '✓ Übereinstimmend',
+                    note: act.maklerReason
+                },
+                {
+                    title: `3. Grunderwerbsteuer (${taxRate.toFixed(1)} %)`,
+                    subtitle: 'Landesspezifische Kaufnebenkosten an das Finanzamt',
+                    exposeValStr: '0,00 € (nicht beziffert)',
+                    exposeSub: exp.steuerNote,
+                    actualValStr: `${formatEur(taxCost)} (${taxRate.toFixed(1)} %)`,
+                    actualSub: `Automatisch ermittelt für Bundesland`,
+                    hasDiff: true,
+                    diffType: 'alert',
+                    diffBadge: `+${formatEur(taxCost)} Gesetzlich fällig`,
+                    note: '⚠️ Gesetzliche Pflichtabgabe: Im Exposé nie im Gesamtpreis enthalten!'
+                },
+                {
+                    title: '4. Notar- & Grundbuchgebühren (~2,0 %)',
+                    subtitle: 'Beurkundung, Eigentumsvormerkung & Grundschuld',
+                    exposeValStr: '0,00 € (nicht beziffert)',
+                    exposeSub: exp.notarNote,
+                    actualValStr: `${formatEur(notarCost)} (~2,0 %)`,
+                    actualSub: '1,5 % Notar + 0,5 % Grundbuchamt',
+                    hasDiff: true,
+                    diffType: 'alert',
+                    diffBadge: `+${formatEur(notarCost)} Gesetzlich fällig`,
+                    note: '⚠️ Notarkosten werden im Exposé nicht genannt, fallen aber zwingend an.'
+                },
+                {
+                    title: '5. Renovierung & Sofortmaßnahmen',
+                    subtitle: 'Unmittelbar nötige Sanierung / Instandsetzung',
+                    exposeValStr: '0,00 €',
+                    exposeSub: exp.renovationNote,
+                    actualValStr: formatEur(renovation),
+                    actualSub: renovation > 0 ? 'Gutachter-/Handwerkerschätzung' : 'Kein Bedarf',
+                    hasDiff: renovation > 0,
+                    diffType: renovation > 0 ? 'alert' : 'neutral',
+                    diffBadge: renovation > 0 ? `+${formatEur(renovation)} Zusatzkosten` : '✓ Kein Sanierungsstau',
+                    note: act.renovationReason
+                },
+                {
+                    title: '6. Hausgeld / Wohngeld (monatlich)',
+                    subtitle: 'Laufende Bewirtschaftung & Instandhaltungsrücklage',
+                    exposeValStr: exp.hausgeld > 0 ? `${exp.hausgeld} € / Monat` : '— (DHH/EFH)',
+                    exposeSub: exp.hausgeldNote,
+                    actualValStr: hausgeld > 0 ? `${hausgeld} € / Monat` : '— (DHH/EFH)',
+                    actualSub: hausgeld > 0 ? 'Lt. aktuellem Wirtschaftsplan' : 'Direkte Eigenkosten',
+                    hasDiff: exp.hausgeld > 0 && Math.abs(hausgeld - exp.hausgeld) > 1,
+                    diffType: 'alert',
+                    diffBadge: exp.hausgeld > 0 && Math.abs(hausgeld - exp.hausgeld) > 1 ? `+${hausgeld - exp.hausgeld} € / Mtl.` : (exp.hausgeld > 0 ? '✓ Entspricht Exposé' : 'Keine WEG'),
+                    note: act.hausgeldReason
+                },
+                {
+                    title: '7. Sonderumlage (Instandhaltungsbeschluss)',
+                    subtitle: 'Bereits beschlossene Einmalzahlungen der WEG',
+                    exposeValStr: '0,00 €',
+                    exposeSub: exp.sonderumlageNote,
+                    actualValStr: formatEur(sonderumlage),
+                    actualSub: sonderumlage > 0 ? 'Anteiliger Beschluss für dieses Sondereigentum' : 'Keine Sonderumlage',
+                    hasDiff: sonderumlage > 0,
+                    diffType: sonderumlage > 0 ? 'alert' : 'neutral',
+                    diffBadge: sonderumlage > 0 ? `+${formatEur(sonderumlage)} Sonderzahlung!` : '✓ Keine Umlage',
+                    note: act.sonderumlageReason
+                }
+            ];
+
+            const alertCount = rows.filter(r => r.hasDiff && r.diffType === 'alert').length;
+            const badge = document.getElementById('detailDiscrepancyBadge');
+            if (badge) {
+                if (alertCount > 0) {
+                    badge.classList.remove('hidden');
+                    badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-[10px]"></i> ${alertCount} Abweichungen zum Exposé`;
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+
+            const alertBanner = document.getElementById('costAlertBanner');
+            if (alertBanner) {
+                if (alertCount > 0) {
+                    alertBanner.classList.remove('hidden');
+                    document.getElementById('costAlertText').textContent = `Es wurden ${alertCount} Kostenpositionen identifiziert, die im Makler-Exposé nicht oder niedriger dargestellt wurden als vertraglich fällig.`;
+                } else {
+                    alertBanner.classList.add('hidden');
+                }
+            }
+
+            const displayedRows = currentCostFilter === 'diff' ? rows.filter(r => r.hasDiff) : rows;
+
+            const tbody = document.getElementById('costTableBody');
+            tbody.innerHTML = displayedRows.map(row => {
+                const isAlert = row.hasDiff && row.diffType === 'alert';
+                const rowClass = isAlert ? 'diff-row-alert' : 'hover:bg-surface-50/70 transition';
+                
+                return `
+                    <tr class="${rowClass}">
+                        <td class="py-3 px-6 align-top">
+                            <div class="font-bold ${isAlert ? 'text-rose-900' : 'text-slate-900'}">${row.title}</div>
+                            <div class="text-[11px] text-slate-500 mt-0.5">${row.subtitle}</div>
+                            ${isAlert && row.note ? `
+                                <div class="mt-2 text-[11px] font-semibold text-rose-700 bg-rose-100/70 border border-rose-200/80 rounded-lg p-2 flex items-start gap-1.5 leading-snug">
+                                    <i class="fa-solid fa-circle-exclamation text-rose-500 text-xs mt-0.5 flex-shrink-0"></i>
+                                    <span>${row.note}</span>
+                                </div>
+                            ` : ''}
+                        </td>
+                        <td class="py-3 px-4 align-top bg-slate-50/70 border-x border-surface-200/60">
+                            <div class="font-bold text-slate-800 text-sm">${row.exposeValStr}</div>
+                            <div class="text-[11px] text-slate-500 mt-0.5">${row.exposeSub}</div>
+                        </td>
+                        <td class="py-3 px-4 align-top">
+                            <div class="font-bold ${isAlert ? 'text-rose-700 text-sm' : 'text-slate-900 text-sm'}">${row.actualValStr}</div>
+                            <div class="text-[11px] text-slate-500 mt-0.5">${row.actualSub}</div>
+                        </td>
+                        <td class="py-3 px-6 align-top text-right">
+                            ${isAlert ? `
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 shadow-2xs">
+                                    <i class="fa-solid fa-triangle-exclamation text-rose-600"></i> ${row.diffBadge}
+                                </span>
+                            ` : (row.diffType === 'success' ? `
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                    <i class="fa-solid fa-check text-emerald-600"></i> ${row.diffBadge}
+                                </span>
+                            ` : `
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-surface-100 text-slate-600 border border-surface-200">
+                                    ${row.diffBadge}
+                                </span>
+                            `)}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function setCostFilter(type) {
+            currentCostFilter = type;
+            const btnAll = document.getElementById('costFilterAll');
+            const btnDiff = document.getElementById('costFilterDiff');
+
+            if (type === 'all') {
+                btnAll.className = 'px-2.5 py-1 rounded-lg font-semibold bg-white text-slate-900 shadow-xs';
+                btnDiff.className = 'px-2.5 py-1 rounded-lg text-slate-500 hover:text-rose-700 flex items-center gap-1';
+            } else {
+                btnAll.className = 'px-2.5 py-1 rounded-lg text-slate-500 hover:text-slate-900';
+                btnDiff.className = 'px-2.5 py-1 rounded-lg font-semibold bg-rose-100 text-rose-800 shadow-xs flex items-center gap-1 border border-rose-200';
+            }
+
+            recalculateCosts();
+        }
+
+        function formatEur(num) {
+            if (num === null || num === undefined) return '0 €';
+            return num.toLocaleString('de-DE') + ' €';
+        }
+
+        function exportCostSummary() {
+            const prop = propertiesData[currentActivePropId];
+            alert(`Kostenübersicht für „${prop.title}" wurde als PDF aufbereitet.`);
+        }
+
+        // -------- Navigation --------
+        function navigateTo(name) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            const viewId = {
+                'objects': 'view-objects',
+                'object-detail': 'view-object-detail',
+                'object-detail-tx': 'view-object-detail-tx',
+                'transactions': 'view-transactions',
+                'form': 'view-form'
+            }[name];
+            const view = document.getElementById(viewId);
+            if (view) { view.classList.add('active'); view.classList.remove('fade-in'); void view.offsetWidth; view.classList.add('fade-in'); }
+
+            document.querySelectorAll('.nav-tab').forEach(t => { t.classList.remove('active'); t.classList.remove('text-slate-900'); t.classList.add('text-slate-500'); });
+            if (name === 'transactions') {
+                document.getElementById('tab-transactions').classList.add('active');
+                document.getElementById('tab-transactions').classList.add('text-slate-900');
+            } else {
+                document.getElementById('tab-objects').classList.add('active');
+                document.getElementById('tab-objects').classList.add('text-slate-900');
+            }
+
+            if (name === 'object-detail-tx') renderCopilot();
+            if (name === 'object-detail') loadPropertyCostView(currentActivePropId);
+        }
+
+        function activateTxBadge() {
+            document.getElementById('tx-badge').classList.remove('hidden');
+        }
+
+        // Modals
+        function showModal(id) { const m = document.getElementById(id); if (m) { m.classList.remove('hidden'); m.classList.add('flex'); } }
+        function hideModal(id) {
+            const m = document.getElementById(id);
+            if (m) {
+                m.classList.add('hidden');
+                m.classList.remove('flex');
+            }
+        }
+        document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) hideModal(m.id); }));
+
+        function toggleAccordion(name) {
+            const c = document.getElementById('accordion-' + name);
+            const i = document.getElementById('icon-' + name);
+            c.classList.toggle('open');
+            if (i) i.style.transform = c.classList.contains('open') ? 'rotate(180deg)' : '';
+        }
+
+        // Transaction Copilot Data & Logic
+        let txStage = 4;
+        const txStages = {
+            1: { title: 'Reservierung & Unterlagenvorbereitung', badge: 'Phase 1', responsible: 'Makler & Käufer', desc: 'Sicherung des Objekts und Finanzierungscheck.', tasks: [{ id:'t1_1', title:'Reservierungsvereinbarung unterzeichnet', done:true, by:'Käufer & Makler' }] },
+            2: { title: 'Notarbeauftragung & 14-Tage-Frist', badge: 'Phase 2', responsible: 'Notariat', desc: '14-tägige Bedenkzeit nach § 17 Abs. 2a BeurkG.', tasks: [{ id:'t2_1', title:'Kaufvertragsentwurf zugestellt', done:true, by:'Notariat' }] },
+            3: { title: 'Notarielle Beurkundung', badge: 'Phase 3', responsible: 'Notar & Parteien', desc: 'Persönlicher Notartermin zur Unterzeichnung.', tasks: [{ id:'t3_1', title:'Kaufvertrag beurkundet', done:true, by:'Notar' }] },
+            4: { title: 'Vorbereitung der Kaufpreisfälligkeit', badge: 'Phase 4 — Aktuell', responsible: 'Notariat Dr. Schmidt', desc: 'Der Kaufpreis wird erst fällig, wenn die Auflassungsvormerkung eingetragen ist.', tasks: [{ id:'t4_1', title:'Auflassungsvormerkung im Grundbuch eingetragen', done:true, by:'Grundbuchamt' }] },
+            5: { title: 'Kaufpreiszahlung & Übergabe', badge: 'Phase 5', responsible: 'Käufer & Verkäufer', desc: 'Nach der Fälligkeitsmitteilung erfolgt die unbare Zahlung.', tasks: [{ id:'t5_1', title:'Kaufpreiszahlung geleistet', done:false, by:'Käufer' }] }
+        };
+
+        const txDocs = [
+            { name: 'Grundbuchauszug_Schwabing.pdf', cat: 'Objekt', status: 'Geprüft' },
+            { name: 'Kaufvertragsentwurf_v3_Schmidt.pdf', cat: 'Notariat', status: 'Geprüft' },
+            { name: 'Gehaltsnachweise_Mustermann.pdf', cat: 'Bonität', status: 'Vertraulich' }
+        ];
+
+        function renderCopilot() {
+            const stage = txStages[txStage];
+            document.getElementById('txStageBadge').textContent = stage.badge;
+            document.getElementById('txStageTitle').textContent = stage.title;
+            document.getElementById('txStageMeta').innerHTML = `<span>Zuständig:</span><div class="font-semibold text-slate-800">${stage.responsible}</div>`;
+            document.getElementById('txStageDesc').textContent = stage.desc;
+
+            const tracker = document.getElementById('stageTracker');
+            tracker.innerHTML = '';
+            for (let i = 1; i <= 5; i++) {
+                const done = i < txStage;
+                const active = i === txStage;
+                const names = ['Reservierung','Entwurf','Notar','Fälligkeit','Übergabe'];
+                tracker.innerHTML += `
+                    <div class="flex flex-col items-center flex-1 cursor-pointer" onclick="setTxStage(${i})">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold mb-1
+                            ${done ? 'bg-emerald-100 text-emerald-600 border-2 border-emerald-500' : ''}
+                            ${active ? 'bg-brand-600 text-white ring-4 ring-brand-200' : ''}
+                            ${i > txStage ? 'bg-surface-100 text-slate-400 border border-surface-200' : ''}">
+                            ${done ? '<i class="fa-solid fa-check text-xs"></i>' : i}
+                        </div>
+                        <span class="${active ? 'text-brand-700 font-bold' : 'text-slate-500'}">${i}. ${names[i-1]}</span>
+                    </div>
+                    ${i < 5 ? `<div class="h-0.5 flex-1 mx-1 ${i < txStage ? 'bg-emerald-500' : 'bg-surface-200'}"></div>` : ''}
+                `;
+            }
+
+            const taskList = document.getElementById('txTaskList');
+            taskList.innerHTML = stage.tasks.map(t => `
+                <div class="flex items-center justify-between p-3 rounded-lg border ${t.done ? 'bg-emerald-50/60 border-emerald-200' : 'bg-surface-50 border-surface-200'} text-xs">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" ${t.done ? 'checked' : ''} class="w-4 h-4 text-brand-600 rounded">
+                        <span class="${t.done ? 'line-through text-slate-400' : 'text-slate-800 font-semibold'}">${t.title}</span>
+                    </div>
+                    <span class="text-[10px] px-2 py-0.5 rounded font-mono bg-surface-100 text-slate-600">${t.by}</span>
+                </div>
+            `).join('');
+
+            const docTable = document.getElementById('txDocTable');
+            docTable.innerHTML = txDocs.map(d => `
+                <tr class="hover:bg-surface-50 transition">
+                    <td class="py-2.5 font-medium text-slate-800 flex items-center gap-2"><i class="fa-regular fa-file-pdf text-red-500 text-sm"></i><span>${d.name}</span></td>
+                    <td class="py-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-surface-100 text-slate-600">${d.cat}</span></td>
+                    <td class="py-2.5"><span class="text-emerald-600 font-semibold text-xs"><i class="fa-solid fa-check mr-1"></i>${d.status}</span></td>
+                    <td class="py-2.5 text-right"><button class="text-brand-600 hover:text-brand-800 font-semibold"><i class="fa-solid fa-download"></i></button></td>
+                </tr>
+            `).join('');
+        }
+
+        function setTxStage(n) { txStage = n; renderCopilot(); }
+
+        // DOM Ready
+        document.addEventListener('DOMContentLoaded', () => { 
+            activateTxBadge(); 
+            renderCopilot(); 
+            loadPropertyCostView('schwabing');
+        });
+    </script>
+</body>
+</html>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ImmoFlow Germany - Plattform für Immobilien-Transaktionen</title>
+    <title>ImmoFlow Germany - Käufer-Cockpit | Transaktionsportal</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome CDN -->
@@ -32,20 +32,22 @@
                 </div>
                 <div>
                     <span class="text-xl font-bold tracking-tight text-slate-900">ImmoFlow<span class="text-brand-600">.de</span></span>
-                    <span class="hidden md:inline-block ml-2 px-2 py-0.5 text-xs font-semibold bg-slate-100 text-slate-600 rounded">Transaktionsmanager</span>
+                    <span class="hidden md:inline-block ml-2 px-2 py-0.5 text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200 rounded">Käufer-Portal</span>
                 </div>
             </div>
 
-            <!-- Role Selector -->
+            <!-- Buyer Perspective Indicator (Single Buyer Perspective) -->
             <div class="flex items-center space-x-3">
-                <span class="text-xs font-medium text-slate-500 uppercase tracking-wider hidden sm:inline">Perspektive:</span>
-                <div class="relative inline-block text-left">
-                    <select id="roleSelector" onchange="switchRole(this.value)" class="bg-slate-50 border border-slate-300 text-slate-800 text-sm font-semibold rounded-lg focus:ring-brand-600 focus:border-brand-600 block w-full p-2 pr-8 cursor-pointer shadow-inner">
-                        <option value="buyer">👤 Käufer (Max Mustermann)</option>
-                        <option value="broker" selected>👔 Immobilienmakler (ImmoPartner GmbH)</option>
-                        <option value="notary">⚖️ Notariat (Dr. F. Schmidt, Notar)</option>
-                        <option value="lender">🏦 Bank / Finanzberater (Spk. Finanz)</option>
-                    </select>
+                <div class="flex items-center space-x-2.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl shadow-xs">
+                    <div class="w-8 h-8 rounded-full bg-brand-600 text-white flex items-center justify-center font-bold text-xs shadow-sm ring-2 ring-brand-100">
+                        MM
+                    </div>
+                    <div class="text-left leading-tight hidden sm:block">
+                        <div class="text-xs font-bold text-slate-900">Max Mustermann</div>
+                        <div class="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span> Käufer (Verbraucher)
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -204,37 +206,37 @@
             <div id="legalAlertBox" class="bg-gradient-to-br from-indigo-50 to-slate-50 border border-indigo-100 rounded-xl p-5 shadow-sm">
                 <div class="flex items-center space-x-2 text-legal-700 font-bold text-sm">
                     <i class="fa-solid fa-scale-balanced"></i>
-                    <span>Gesetzliche Fristenüberwachung</span>
+                    <span>Käuferschutz & Fristenüberwachung</span>
                 </div>
                 <div class="mt-3">
                     <div class="flex justify-between items-center text-xs">
                         <span class="font-medium text-slate-700">14-Tage-Prüffrist (§ 17 Abs. 2a BeurkG)</span>
                         <span class="text-emerald-700 font-bold bg-emerald-100 px-1.5 py-0.5 rounded">Erfüllt</span>
                     </div>
-                    <p class="text-[11px] text-slate-500 mt-1">Der Kaufvertragsentwurf lag dem Käufer vor Beurkundung 16 Tage zur Prüfung vor.</p>
+                    <p class="text-[11px] text-slate-500 mt-1">Der Kaufvertragsentwurf lag Ihnen vor der Beurkundung 16 Tage zur Prüfung vor.</p>
                 </div>
                 <div class="mt-4 pt-3 border-t border-indigo-100">
                     <div class="flex justify-between items-center text-xs">
                         <span class="font-medium text-slate-700">Geldwäscheprüfung (§ 16a GwG)</span>
                         <span id="gwgStatusBadge" class="text-amber-700 font-bold bg-amber-100 px-1.5 py-0.5 rounded">Zahlungsbeleg ausstehend</span>
                     </div>
-                    <p class="text-[11px] text-slate-500 mt-1">Strikte Pflicht: Kaufpreiszahlung muss unbar via Banktransfer nachgewiesen werden.</p>
+                    <p class="text-[11px] text-slate-500 mt-1">Zu Ihrem Schutz: Die Kaufpreiszahlung muss unbar per Banküberweisung nachgewiesen werden.</p>
                 </div>
             </div>
 
             <!-- Stakeholders Panel -->
             <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Projekt-Beteiligte</h3>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Ihre Transaktionspartner</h3>
                 <div class="space-y-3">
                     <div class="flex items-center justify-between text-xs">
                         <div class="flex items-center space-x-2.5">
-                            <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">KM</div>
+                            <div class="w-8 h-8 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold">MM</div>
                             <div>
-                                <div class="font-semibold text-slate-800">Max Mustermann</div>
+                                <div class="font-semibold text-slate-800">Max Mustermann <span class="text-[10px] text-brand-600 font-bold bg-brand-50 px-1.5 py-0.5 rounded border border-brand-200">Sie</span></div>
                                 <div class="text-[10px] text-slate-500">Käufer</div>
                             </div>
                         </div>
-                        <span class="text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-regular fa-envelope"></i></span>
+                        <span class="text-emerald-600 text-xs font-semibold flex items-center gap-1"><i class="fa-solid fa-circle-check"></i> Aktiv</span>
                     </div>
 
                     <div class="flex items-center justify-between text-xs">
@@ -242,10 +244,10 @@
                             <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">IM</div>
                             <div>
                                 <div class="font-semibold text-slate-800">ImmoPartner GmbH</div>
-                                <div class="text-[10px] text-slate-500">Zuständiger Makler</div>
+                                <div class="text-[10px] text-slate-500">Ihr Makler</div>
                             </div>
                         </div>
-                        <span class="text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-regular fa-envelope"></i></span>
+                        <span class="text-slate-400 hover:text-slate-600 cursor-pointer" title="Kontaktieren"><i class="fa-regular fa-envelope"></i></span>
                     </div>
 
                     <div class="flex items-center justify-between text-xs">
@@ -253,10 +255,10 @@
                             <div class="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold">NS</div>
                             <div>
                                 <div class="font-semibold text-slate-800">Dr. F. Schmidt</div>
-                                <div class="text-[10px] text-slate-500">Notar (München I)</div>
+                                <div class="text-[10px] text-slate-500">Zuständiges Notariat (München I)</div>
                             </div>
                         </div>
-                        <span class="text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-regular fa-envelope"></i></span>
+                        <span class="text-slate-400 hover:text-slate-600 cursor-pointer" title="Kontaktieren"><i class="fa-regular fa-envelope"></i></span>
                     </div>
 
                     <div class="flex items-center justify-between text-xs">
@@ -264,10 +266,10 @@
                             <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold">SF</div>
                             <div>
                                 <div class="font-semibold text-slate-800">Sparkasse Finanzberatung</div>
-                                <div class="text-[10px] text-slate-500">Finanzierende Bank</div>
+                                <div class="text-[10px] text-slate-500">Ihre finanzierende Bank</div>
                             </div>
                         </div>
-                        <span class="text-slate-400 hover:text-slate-600 cursor-pointer"><i class="fa-regular fa-envelope"></i></span>
+                        <span class="text-slate-400 hover:text-slate-600 cursor-pointer" title="Kontaktieren"><i class="fa-regular fa-envelope"></i></span>
                     </div>
                 </div>
             </div>
@@ -330,7 +332,7 @@
 
     <!-- Script Application Logic -->
     <script>
-        let currentRole = 'broker';
+        const currentRole = 'buyer';
         let currentStage = 4;
 
         const stages = {
@@ -338,32 +340,32 @@
                 title: "Phase 1: Reservierung, Bonitätsprüfung & Unterlagenvorbereitung",
                 badge: "Phase 1: Vorverhandlung",
                 responsible: "Makler & Käufer",
-                description: "Vorbereitung der Finanzierung und Sicherung des Objekts. Der Makler stellt die vollständigen Objektunterlagen bereit, während der Käufer die Bonitätsunterlagen für die finanzierende Bank einreicht.",
+                description: "Vorbereitung der Finanzierung und Sicherung des Objekts. Der Makler stellt die vollständigen Objektunterlagen bereit, während Sie Ihre Bonitäts- und Eigenkapitalunterlagen für die finanzierende Bank einreichen.",
                 tasks: [
                     { id: 't1_1', title: 'Reservierungsvereinbarung unterzeichnet', done: true, by: 'Käufer & Makler' },
                     { id: 't1_2', title: 'Finanzierungsbestätigung der Bank liegt vor', done: true, by: 'Bank' },
-                    { id: 't1_3', title: 'Objektunterlagen vollständig (Grundbuch, Flurkarte, Energieausweis)', done: true, by: 'Makler' }
+                    { id: 't1_3', title: 'Objektunterlagen eingesehen (Grundbuch, Flurkarte, Energieausweis)', done: true, by: 'Käufer' }
                 ]
             },
             2: {
                 title: "Phase 2: Notarbeauftragung & Gesetzliche 14-Tage-Prüffrist",
                 badge: "Phase 2: Vorbereitung",
                 responsible: "Notariat & Parteien",
-                description: "Der Notar erstellt auf Basis der Personendaten und Grundbuchdaten den offiziellen Kaufvertragsentwurf. Bei Verbraucherbeteiligung muss zwingend die 14-tägige Bedenkzeit nach § 17 Abs. 2a BeurkG eingehalten werden.",
+                description: "Der Notar erstellt auf Basis der Personendaten und Grundbuchdaten den offiziellen Kaufvertragsentwurf. Zu Ihrem Schutz als Verbraucher gilt zwingend die 14-tägige Bedenkzeit nach § 17 Abs. 2a BeurkG vor dem Notartermin.",
                 tasks: [
-                    { id: 't2_1', title: 'Datenerfassungsbogen an Notariat übermittelt', done: true, by: 'Makler' },
-                    { id: 't2_2', title: 'Kaufvertragsentwurf durch Notar versendet', done: true, by: 'Notariat' },
+                    { id: 't2_1', title: 'Persönlicher Datenerfassungsbogen für Notar bestätigt', done: true, by: 'Käufer' },
+                    { id: 't2_2', title: 'Kaufvertragsentwurf durch Notar zugestellt', done: true, by: 'Notariat' },
                     { id: 't2_3', title: '14-Tage-Prüffrist (§ 17 Abs. 2a BeurkG) abgelaufen', done: true, by: 'Käufer' },
-                    { id: 't2_4', title: 'Finanzierungs-Grundschuldbestellungsformular eingereicht', done: true, by: 'Bank' }
+                    { id: 't2_4', title: 'Finanzierungs-Grundschuldbestellungsformular eingereicht', done: true, by: 'Bank & Käufer' }
                 ]
             },
             3: {
                 title: "Phase 3: Notarielle Beurkundung (Kaufvertrag & Grundschuld)",
                 badge: "Phase 3: Beurkundung",
                 responsible: "Notar, Käufer & Verkäufer",
-                description: "Persönlicher Termin im Notariat zur Verlesung und Unterzeichnung des Kaufvertrags und der Grundschuldbestellung. Amtliche Identitätsprüfung nach dem Geldwäschegesetz (GwG).",
+                description: "Persönlicher Notartermin zur Verlesung und Unterzeichnung des Kaufvertrags und Ihrer Grundschuldbestellung. Amtliche Identitätsprüfung nach dem Geldwäschegesetz (GwG).",
                 tasks: [
-                    { id: 't3_1', title: 'Kaufvertragsunterzeichnung abgeschlossen (URNR 1402/2026)', done: true, by: 'Alle Parteien' },
+                    { id: 't3_1', title: 'Kaufvertragsunterzeichnung abgeschlossen (URNR 1402/2026)', done: true, by: 'Käufer & Verkäufer' },
                     { id: 't3_2', title: 'Grundschuld für finanzierende Bank beurkundet', done: true, by: 'Käufer' },
                     { id: 't3_3', title: 'Mitteilung an Finanzamt zwecks Grunderwerbsteuer erfolgt', done: true, by: 'Notariat' }
                 ]
@@ -372,9 +374,9 @@
                 title: "Phase 4: Vorbereitung der Kaufpreisfälligkeit",
                 badge: "Phase 4: Fälligkeit (Aktuell)",
                 responsible: "Notariat Dr. Schmidt",
-                description: "Der Notar holt alle gesetzlichen Voraussetzungen ein, um den Kaufpreis sicher fällig zu stellen. Der Käufer zahlt erst, wenn die rechtlichen Absicherungen lückenlos vorliegen.",
+                description: "Der Notar holt alle gesetzlichen Voraussetzungen ein, um Sie vor ungesicherten Zahlungen zu schützen. Sie überweisen den Kaufpreis erst, wenn die Auflassungsvormerkung zu Ihren Gunsten eingetragen ist und alle Genehmigungen vorliegen.",
                 tasks: [
-                    { id: 't4_1', title: 'Eintragung der Auflassungsvormerkung im Grundbuch', done: true, by: 'Grundbuchamt' },
+                    { id: 't4_1', title: 'Eintragung der Auflassungsvormerkung im Grundbuch (Käuferschutz)', done: true, by: 'Grundbuchamt' },
                     { id: 't4_2', title: 'Löschungsbewilligung für Altlasten/Verkäuferbank liegt vor', done: true, by: 'Notariat' },
                     { id: 't4_3', title: 'Verzichtserklärung Vorkaufsrecht der Gemeinde (Negativattest)', done: false, by: 'Gemeinde / Stadt' },
                     { id: 't4_4', title: 'Zustimmung des WEG-Verwalters (§ 12 WEG)', done: true, by: 'Hausverwaltung' },
@@ -385,21 +387,21 @@
                 title: "Phase 5: Kaufpreiszahlung, Übergabe & Eigentumsumschreibung",
                 badge: "Phase 5: Abschluss",
                 responsible: "Käufer, Verkäufer & Notar",
-                description: "Nach Erhalt der Fälligkeitsmitteilung überweist der Käufer den Kaufpreis (unter strikter Beachtung des Barzahlungsverbots nach § 16a GwG). Anschließend erfolgt die Schlüsselübergabe und die Umschreibung im Grundbuch.",
+                description: "Nach Erhalt der offiziellen Fälligkeitsmitteilung überweisen Sie den Kaufpreis unbar (unter strikter Beachtung des Barzahlungsverbots nach § 16a GwG). Nach Bestätigung erfolgen Wohnungsübergabe und Grundbucheintragung.",
                 tasks: [
-                    { id: 't5_1', title: 'Kaufpreiszahlung unbar geleistet & Nachweis erbracht (§ 16a GwG)', done: false, by: 'Käufer / Bank' },
+                    { id: 't5_1', title: 'Kaufpreiszahlung unbar geleistet & Beleg hochgeladen (§ 16a GwG)', done: false, by: 'Käufer' },
                     { id: 't5_2', title: 'Wirtschaftlicher Übergang & Schlüsselübergabeprotokoll', done: false, by: 'Käufer & Verkäufer' },
                     { id: 't5_3', title: 'Unbedenklichkeitsbescheinigung des Finanzamts erhalten', done: false, by: 'Finanzamt' },
-                    { id: 't5_4', title: 'Eigentumsumschreibung im Grundbuch (Abt. I) vollzogen', done: false, by: 'Grundbuchamt' }
+                    { id: 't5_4', title: 'Eigentumsumschreibung im Grundbuch vollzogen', done: false, by: 'Grundbuchamt' }
                 ]
             }
         };
 
         let documents = [
-            { id: 1, name: 'Grundbuchauszug_Schwabing_Blatt_4502.pdf', category: 'Objekt', status: 'Geprüft', sharedWith: 'Alle', date: '01.10.2026' },
-            { id: 2, name: 'Teilungserklaerung_inkl_Aufteilungsplan.pdf', category: 'Objekt', status: 'Geprüft', sharedWith: 'Alle', date: '02.10.2026' },
-            { id: 3, name: 'Kaufvertragsentwurf_v3_Schmidt_Notar.pdf', category: 'Notariat', status: 'Geprüft', sharedWith: 'Alle', date: '20.10.2026' },
-            { id: 4, name: 'Bestaetigung_Eintragung_Vormerkung_AG_MUC.pdf', category: 'Notariat', status: 'Geprüft', sharedWith: 'Notar, Makler, Bank', date: 'Heute' },
+            { id: 1, name: 'Grundbuchauszug_Schwabing_Blatt_4502.pdf', category: 'Objekt', status: 'Geprüft', sharedWith: 'Käufer, Makler, Notar', date: '01.10.2026' },
+            { id: 2, name: 'Teilungserklaerung_inkl_Aufteilungsplan.pdf', category: 'Objekt', status: 'Geprüft', sharedWith: 'Käufer, Notar, Bank', date: '02.10.2026' },
+            { id: 3, name: 'Kaufvertragsentwurf_v3_Schmidt_Notar.pdf', category: 'Notariat', status: 'Geprüft', sharedWith: 'Alle Parteien', date: '20.10.2026' },
+            { id: 4, name: 'Bestaetigung_Eintragung_Vormerkung_AG_MUC.pdf', category: 'Notariat', status: 'Geprüft', sharedWith: 'Käufer, Notar, Bank', date: 'Heute' },
             { id: 5, name: 'Selbstauskunft_Gehaltsnachweise_Mustermann.pdf', category: 'Bonität', status: 'Vertraulich', sharedWith: 'Käufer, Bank', date: '05.10.2026' }
         ];
 
@@ -413,14 +415,17 @@
             const taskList = document.getElementById('taskList');
             taskList.innerHTML = '';
             stage.tasks.forEach(t => {
-                const canToggle = (currentRole === 'notary' || currentRole === 'broker');
+                const isBuyerTask = t.by.toLowerCase().includes('käufer');
                 taskList.innerHTML += `
                     <div class="flex items-center justify-between p-3 rounded-lg border ${t.done ? 'bg-emerald-50/60 border-emerald-200' : 'bg-slate-50 border-slate-200'} text-xs">
                         <div class="flex items-center space-x-3">
-                            <input type="checkbox" ${t.done ? 'checked' : ''} ${canToggle ? '' : 'disabled'} onchange="toggleTask('${t.id}')" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 cursor-pointer">
+                            <input type="checkbox" ${t.done ? 'checked' : ''} ${isBuyerTask ? '' : 'disabled'} onchange="toggleTask('${t.id}')" class="w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 ${isBuyerTask ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}">
                             <span class="${t.done ? 'line-through text-slate-400 font-medium' : 'text-slate-800 font-semibold'}">${t.title}</span>
                         </div>
-                        <span class="text-[10px] px-2 py-0.5 rounded font-mono ${t.done ? 'bg-emerald-100 text-emerald-800 font-semibold' : 'bg-slate-200 text-slate-600'}">${t.by}</span>
+                        <div class="flex items-center space-x-1.5">
+                            ${isBuyerTask ? '<span class="text-[9px] px-1.5 py-0.5 rounded font-semibold bg-brand-100 text-brand-700 uppercase">Ihre Aufgabe</span>' : ''}
+                            <span class="text-[10px] px-2 py-0.5 rounded font-mono ${t.done ? 'bg-emerald-100 text-emerald-800 font-semibold' : 'bg-slate-200 text-slate-600'}">${t.by}</span>
+                        </div>
                     </div>
                 `;
             });
@@ -428,33 +433,65 @@
             const actionContainer = document.getElementById('actionContainer');
             actionContainer.innerHTML = '';
 
-            if (currentRole === 'notary') {
+            if (currentStage === 1) {
                 actionContainer.innerHTML = `
-                    <div class="text-xs text-purple-700 font-semibold flex items-center space-x-1">
-                        <i class="fa-solid fa-stamp"></i>
-                        <span>Notariat-Aktionen freigeschaltet</span>
+                    <div class="text-xs text-slate-600 flex items-center space-x-2">
+                        <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                        <span>Ihre Bonitätsunterlagen liegen vor. Das Objekt ist verbindlich für Sie reserviert.</span>
                     </div>
-                    <div class="flex space-x-2">
-                        <button onclick="simulateFälligkeit()" class="px-3 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded text-xs font-semibold shadow transition">
-                            Fälligkeitsmitteilung erteilen
+                    <button onclick="triggerUploadModal('Bonität')" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-semibold shadow transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>Bonitätsunterlagen ergänzen</span>
+                    </button>
+                `;
+            } else if (currentStage === 2) {
+                actionContainer.innerHTML = `
+                    <div class="text-xs text-slate-600 flex items-center space-x-2">
+                        <i class="fa-solid fa-scale-balanced text-brand-600"></i>
+                        <span>Die 14-tägige Bedenkzeit nach § 17 Abs. 2a BeurkG schützt Sie vor übereilten Entscheidungen.</span>
+                    </div>
+                    <button onclick="downloadFake('Kaufvertragsentwurf_v3_Schmidt_Notar.pdf')" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-semibold shadow transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-file-pdf"></i>
+                        <span>Kaufvertragsentwurf einsehen</span>
+                    </button>
+                `;
+            } else if (currentStage === 3) {
+                actionContainer.innerHTML = `
+                    <div class="text-xs text-slate-600 flex items-center space-x-2">
+                        <i class="fa-solid fa-stamp text-emerald-600"></i>
+                        <span>Kaufvertrag & Grundschuldbestellung wurden am 12.11.2026 notariell beurkundet (URNR 1402/2026).</span>
+                    </div>
+                    <button onclick="downloadFake('Kaufvertragsentwurf_v3_Schmidt_Notar.pdf')" class="px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded text-xs font-semibold transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-file-contract text-brand-600"></i>
+                        <span>Notarurkunde einsehen</span>
+                    </button>
+                `;
+            } else if (currentStage === 4) {
+                actionContainer.innerHTML = `
+                    <div class="text-xs text-slate-600 flex items-center space-x-2">
+                        <i class="fa-solid fa-shield-halved text-brand-600"></i>
+                        <span>Notariat prüft Fälligkeitsvoraussetzungen. Sie überweisen erst nach offizieller Fälligkeitsmitteilung.</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="triggerUploadModal('Zahlung')" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-semibold shadow transition flex items-center space-x-1.5">
+                            <i class="fa-solid fa-upload"></i>
+                            <span>Zahlungsbeleg einreichen (§ 16a GwG)</span>
+                        </button>
+                        <button onclick="simulateFälligkeit()" title="Demo-Funktion" class="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded text-xs font-medium transition flex items-center space-x-1">
+                            <i class="fa-solid fa-wand-magic-sparkles text-purple-600"></i>
+                            <span>Demo: Fälligkeit simulieren</span>
                         </button>
                     </div>
                 `;
-            } else if (currentRole === 'buyer') {
+            } else if (currentStage === 5) {
                 actionContainer.innerHTML = `
-                    <div class="text-xs text-slate-600">
-                        <i class="fa-solid fa-info-circle text-brand-600 mr-1"></i>
-                        Sie erhalten eine Benachrichtigung, sobald die Fälligkeitsmitteilung des Notariats vorliegt.
+                    <div class="text-xs text-slate-600 flex items-center space-x-2">
+                        <i class="fa-solid fa-money-bill-transfer text-emerald-600"></i>
+                        <span>Fälligkeitsmitteilung liegt vor. Bitte führen Sie die Kaufpreiszahlung unbar aus und reichen Sie den Überweisungsnachweis ein.</span>
                     </div>
-                    <button onclick="triggerUploadModal('Zahlung')" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-semibold shadow transition">
-                        Zahlungsbeleg einreichen (§ 16a GwG)
-                    </button>
-                `;
-            } else {
-                actionContainer.innerHTML = `
-                    <span class="text-xs text-slate-500">Statusüberwachung aktiv. Automatische Benachrichtigung aller Parteien bei Statuswechsel.</span>
-                    <button onclick="sendReminder()" class="px-3 py-1.5 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded text-xs font-semibold transition">
-                        Erinnerung an Behörde senden
+                    <button onclick="triggerUploadModal('Zahlung')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold shadow transition flex items-center space-x-1.5">
+                        <i class="fa-solid fa-upload"></i>
+                        <span>Zahlungsnachweis hochladen (§ 16a GwG)</span>
                     </button>
                 `;
             }
@@ -467,10 +504,6 @@
             tableBody.innerHTML = '';
 
             documents.forEach(doc => {
-                if (doc.category === 'Bonität' && (currentRole === 'notary')) {
-                    return;
-                }
-
                 tableBody.innerHTML += `
                     <tr class="hover:bg-slate-50 transition">
                         <td class="py-2.5 font-medium text-slate-800 flex items-center space-x-2">
@@ -481,7 +514,7 @@
                         <td class="py-2.5"><span class="text-emerald-600 font-semibold"><i class="fa-solid fa-check mr-1"></i>${doc.status}</span></td>
                         <td class="py-2.5 text-slate-500 text-[11px]">${doc.sharedWith}</td>
                         <td class="py-2.5 text-right">
-                            <button onclick="downloadFake('${doc.name}')" class="text-brand-600 hover:text-brand-800 font-semibold mr-2"><i class="fa-solid fa-download"></i></button>
+                            <button onclick="downloadFake('${doc.name}')" class="text-brand-600 hover:text-brand-800 font-semibold mr-2" title="Herunterladen"><i class="fa-solid fa-download"></i></button>
                         </td>
                     </tr>
                 `;
@@ -493,18 +526,12 @@
             renderUI();
         }
 
-        function switchRole(role) {
-            currentRole = role;
-            logActivity(`Perspektive gewechselt zu: ${document.querySelector('#roleSelector option:checked').text}`);
-            renderUI();
-        }
-
         function toggleTask(taskId) {
             const stage = stages[currentStage];
             const task = stage.tasks.find(t => t.id === taskId);
             if (task) {
                 task.done = !task.done;
-                logActivity(`Aufgabe "${task.title}" auf ${task.done ? 'ERLEDIGT' : 'OFFEN'} gesetzt.`);
+                logActivity(`Ihre Aufgabe "${task.title}" auf ${task.done ? 'ERLEDIGT' : 'OFFEN'} gesetzt.`);
                 renderUI();
             }
         }
@@ -515,8 +542,8 @@
             tNeg.done = true;
             tFaell.done = true;
 
-            logActivity(`Notariat Dr. Schmidt: Fälligkeitsmitteilung erteilt und digital an Käufer/Bank übermittelt.`);
-            alert("Erfolg: Alle gesetzlichen Voraussetzungen erfüllt. Fälligkeitsmitteilung wurde rechtsgültig erlassen!");
+            logActivity(`Notariat Dr. Schmidt: Fälligkeitsmitteilung erteilt und digital an Sie übermittelt.`);
+            alert("Erfolg: Alle gesetzlichen Voraussetzungen erfüllt. Die Fälligkeitsmitteilung des Notariats liegt nun vor. Sie können jetzt die Zahlung vornehmen!");
             
             document.getElementById('overallProgressPercent').innerText = "80%";
             document.getElementById('overallProgressBar').style.width = "80%";
@@ -533,7 +560,7 @@
         }
 
         function submitDocument() {
-            const name = document.getElementById('docName').value || "Neues_Transaktionsdokument.pdf";
+            const name = document.getElementById('docName').value || "Kaufpreis_Ueberweisungsnachweis_Mustermann.pdf";
             const category = document.getElementById('docCategory').value;
 
             documents.push({
@@ -541,7 +568,7 @@
                 name: name,
                 category: category,
                 status: 'Geprüft',
-                sharedWith: 'Alle Beteiligten',
+                sharedWith: 'Käufer, Notar, Bank',
                 date: 'Gerade eben'
             });
 
@@ -552,7 +579,7 @@
                 stages[5].tasks.find(t => t.id === 't5_1').done = true;
             }
 
-            logActivity(`Neues Dokument hochgeladen: ${name} (${category})`);
+            logActivity(`Dokument erfolgreich hochgeladen: ${name} (${category})`);
             closeUploadModal();
             renderUI();
         }
@@ -570,11 +597,6 @@
 
         function downloadFake(filename) {
             alert(`Sicherer Download: ${filename}\n(Verschlüsselung verifiziert via ImmoFlow Vault)`);
-        }
-
-        function sendReminder() {
-            alert("Erinnerung bezüglich Negativattest an Gemeindebehörde versendet.");
-            logActivity("Makler: Frist-Erinnerung bzgl. Vorkaufsrechtsverzicht an Stadtverwaltung übermittelt.");
         }
 
         document.addEventListener('DOMContentLoaded', () => {
